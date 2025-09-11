@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { PageMeta } from "@/components/PageMeta";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -15,7 +16,12 @@ const Index = () => {
   }, [session, initialized, navigate]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex items-center justify-center relative overflow-hidden">
+    <>
+      <PageMeta 
+        title="Insolvenzverwaltung – Professionelle Insolvenzabwicklung"
+        description="Professionelle Verwaltung und Abwicklung von Insolvenzverfahren. Digitale Effizienz für komplexe Prozesse."
+      />
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex items-center justify-center relative overflow-hidden">
       {/* Subtle background glow */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10"></div>
       
@@ -44,7 +50,8 @@ const Index = () => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

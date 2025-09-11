@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { PageMeta } from "@/components/PageMeta";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -117,7 +118,12 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex items-center justify-center p-6">
+    <>
+      <PageMeta 
+        title="Anmelden – Insolvenzverwaltung"
+        description="Melden Sie sich in Ihrem Konto an oder erstellen Sie ein neues Konto für die professionelle Insolvenzverwaltung."
+      />
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-foreground mb-2">
@@ -247,7 +253,8 @@ const Auth = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

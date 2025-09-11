@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { PageMeta } from "@/components/PageMeta";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -789,7 +790,12 @@ export default function Verwaltung() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <>
+      <PageMeta 
+        title="Verwaltung – Insolvenzverwaltung Dashboard"
+        description="Professionelle Verwaltung von Interessenten und Kunden in der Insolvenzabwicklung. Effiziente Kontaktverwaltung und Kommunikationstools."
+      />
+      <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Verwaltung</h1>
         <div className="flex gap-2">
@@ -1697,6 +1703,7 @@ export default function Verwaltung() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   );
 }

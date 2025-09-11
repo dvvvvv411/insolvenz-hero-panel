@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus, Upload, ExternalLink, Trash2, Package, FileText, Pencil } from "lucide-react";
+import { PageMeta } from "@/components/PageMeta";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -312,7 +313,12 @@ export default function Nischen() {
   };
 
   return (
-    <div className="space-y-6">
+    <>
+      <PageMeta 
+        title="Nischen – Insolvenzverwaltung Dashboard"
+        description="Verwalten Sie Ihre Insolvenznischen und deren Details in der professionellen Verwaltungsplattform."
+      />
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Nischen</h1>
@@ -749,6 +755,7 @@ export default function Nischen() {
           </Form>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   );
 }
