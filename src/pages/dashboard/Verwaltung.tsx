@@ -136,6 +136,8 @@ export default function Verwaltung() {
   const [nischenDetailsMap, setNischenDetailsMap] = useState<Record<string, NischenDetails>>({});
   const [showHidden, setShowHidden] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isPdfViewerOpen, setIsPdfViewerOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const { toast } = useToast();
 
   const form = useForm<FormData>({
@@ -281,8 +283,7 @@ export default function Verwaltung() {
     }
   };
 
-  const handleContactClick = (interessent: Interessent) => {
-    const phoneNumber = interessent.mobilfunknummer || interessent.telefonnummer;
+  const handleContactClick = (phoneNumber: string) => {
     copyToClipboard(phoneNumber);
   };
 
@@ -294,11 +295,11 @@ export default function Verwaltung() {
     }
   };
 
-  const downloadBestandsliste = async (path: string) => {
+  const viewBestandsliste = async (path: string) => {
     try {
       const { data, error } = await supabase.storage
         .from("bestandslisten")
-        .createSignedUrl(path, 300);
+        .createSignedUrl(path, 3600);
 
       if (error || !data) {
         toast({
@@ -309,12 +310,12 @@ export default function Verwaltung() {
         return;
       }
 
-      // Open the signed URL in a new tab to download
-      window.open(data.signedUrl, '_blank');
+      setPdfUrl(data.signedUrl);
+      setIsPdfViewerOpen(true);
     } catch (error) {
       toast({
         title: "Fehler",
-        description: "Bestandsliste konnte nicht heruntergeladen werden",
+        description: "Bestandsliste konnte nicht geladen werden",
         variant: "destructive",
       });
     }
@@ -800,7 +801,7 @@ export default function Verwaltung() {
                     <div className="text-sm text-muted-foreground">{interessent.email}</div>
                     <button 
                       className="text-sm text-muted-foreground hover:text-primary hover:underline cursor-pointer text-left"
-                      onClick={() => handleContactClick(interessent)}
+                      onClick={() => handleContactClick(interessent.telefonnummer)}
                       title="Klicken zum Kopieren"
                     >
                       {interessent.telefonnummer}
@@ -808,7 +809,7 @@ export default function Verwaltung() {
                     {interessent.mobilfunknummer && (
                       <button 
                         className="text-sm text-muted-foreground hover:text-primary hover:underline cursor-pointer text-left block"
-                        onClick={() => handleContactClick(interessent)}
+                        onClick={() => handleContactClick(interessent.mobilfunknummer)}
                         title="Klicken zum Kopieren"
                       >
                         {interessent.mobilfunknummer}
@@ -928,18 +929,34 @@ export default function Verwaltung() {
                 <TableCell className="px-2 py-2">
                   <div className="flex flex-wrap gap-1">
                     {notizenVerlauf[interessent.id]?.map((notiz, index) => (
-                      <Button
-                        key={notiz.id}
-                        variant="outline"
-                        size="sm"
-                        className="h-8 px-2 text-xs"
-                        onClick={() => {
-                          setViewNotiz(notiz);
-                          setIsNotizViewerOpen(true);
-                        }}
-                      >
-                        Notiz {index + 1}
-                      </Button>
+                      <div key={notiz.id} className="relative inline-block">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-2 pr-6 text-xs"
+                          onClick={() => {
+                            setViewNotiz(notiz);
+                            setIsNotizViewerOpen(true);
+                          }}
+                        >
+                          Notiz {index + 1}
+                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center hover:bg-muted rounded-sm transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Info className="w-4 h-4 text-muted-foreground" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Hinzugefügt am {format(new Date(notiz.created_at), "dd.MM.yyyy, HH:mm", { locale: de })}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                     ))}
                     <Button
                       variant="outline"
@@ -972,7 +989,7 @@ export default function Verwaltung() {
                   </Select>
                 </TableCell>
                 <TableCell className="px-2 py-2">
-                  <div className="space-y-1">
+                  <div className="relative">
                     <Select
                       value={interessent.call_notwendig}
                       onValueChange={(value) => {
@@ -996,7 +1013,7 @@ export default function Verwaltung() {
                       </SelectContent>
                     </Select>
                     {interessent.call_notwendig_grund && (
-                      <div className="text-xs text-muted-foreground">
+                      <div className="absolute top-9 left-0 right-0 text-xs text-muted-foreground bg-background border rounded p-1 z-10">
                         {interessent.call_notwendig_grund}
                       </div>
                     )}
@@ -1190,9 +1207,12 @@ export default function Verwaltung() {
               )}
             </div>
           </DialogHeader>
-          {viewImageUrl && (
-            <div className="w-full">
+          {viewImageUrl && currentViewingScreenshot && (
+            <div className="w-full space-y-3">
               <img src={viewImageUrl} alt="Email Screenshot" className="max-w-full h-auto" />
+              <div className="text-sm text-muted-foreground text-center">
+                Hinzugefügt am {format(new Date(currentViewingScreenshot.created_at), "dd.MM.yyyy, HH:mm", { locale: de })}
+              </div>
             </div>
           )}
         </DialogContent>
@@ -1315,10 +1335,6 @@ export default function Verwaltung() {
                   <strong>Nische:</strong>
                   <div>{selectedNischenDetails.nische}</div>
                 </div>
-                <div>
-                  <strong>Empfänger:</strong>
-                  <div>{selectedNischenDetails.empfaenger}</div>
-                </div>
                 {selectedNischenDetails.insolventes_unternehmen && (
                   <div>
                     <strong>Insolventes Unternehmen:</strong>
@@ -1331,10 +1347,6 @@ export default function Verwaltung() {
                     <div>{selectedNischenDetails.kanzlei}</div>
                   </div>
                 )}
-                <div>
-                  <strong>Erstellt:</strong>
-                  <div>{format(new Date(selectedNischenDetails.created_at), "dd.MM.yyyy HH:mm", { locale: de })}</div>
-                </div>
               </div>
               
               <div className="space-y-3">
@@ -1345,11 +1357,11 @@ export default function Verwaltung() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => downloadBestandsliste(selectedNischenDetails.bestandsliste_path!)}
+                      onClick={() => viewBestandsliste(selectedNischenDetails.bestandsliste_path!)}
                       className="flex items-center gap-2"
                     >
-                      <Download className="w-4 h-4" />
-                      Bestandsliste herunterladen
+                      <Eye className="w-4 h-4" />
+                      Bestandsliste ansehen
                     </Button>
                   </div>
                 )}
@@ -1382,6 +1394,24 @@ export default function Verwaltung() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* PDF Viewer Dialog */}
+      <Dialog open={isPdfViewerOpen} onOpenChange={setIsPdfViewerOpen}>
+        <DialogContent className="max-w-5xl h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Bestandsliste</DialogTitle>
+          </DialogHeader>
+          {pdfUrl && (
+            <div className="w-full h-full">
+              <iframe 
+                src={pdfUrl} 
+                className="w-full h-full rounded border"
+                title="Bestandsliste PDF"
+              />
             </div>
           )}
         </DialogContent>
