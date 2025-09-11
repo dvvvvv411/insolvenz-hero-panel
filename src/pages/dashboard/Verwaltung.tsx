@@ -963,18 +963,18 @@ export default function Verwaltung() {
                          </TooltipProvider>
                        </div>
                      ))}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 px-2 mt-1"
-                       onClick={() => {
-                         setSelectedInteressent(interessent);
-                         setUploadMethod("url");
-                         setIsEmailDialogOpen(true);
-                       }}
-                    >
-                      <Plus className="w-3 h-3" />
-                    </Button>
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       className="h-8 px-2"
+                        onClick={() => {
+                          setSelectedInteressent(interessent);
+                          setUploadMethod("url");
+                          setIsEmailDialogOpen(true);
+                        }}
+                     >
+                       <Plus className="w-3 h-3" />
+                     </Button>
                   </div>
                 </TableCell>
                 <TableCell className="px-2 py-2">
