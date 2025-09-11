@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -102,6 +103,8 @@ export default function Verwaltung() {
   const [isNotizViewerOpen, setIsNotizViewerOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedInteressent, setSelectedInteressent] = useState<Interessent | null>(null);
+  const [screenshotUrl, setScreenshotUrl] = useState("");
+  const [isUrlUploadLoading, setIsUrlUploadLoading] = useState(false);
   const [callNotiz, setCallNotiz] = useState("");
   const [notizText, setNotizText] = useState("");
   const [callGrund, setCallGrund] = useState("");
@@ -293,6 +296,48 @@ export default function Verwaltung() {
     setIsEmailDialogOpen(false);
     setSelectedFile(null);
     fetchInteressenten();
+  };
+
+  const saveScreenshotFromUrl = async () => {
+    if (!screenshotUrl || !selectedInteressent) return;
+
+    setIsUrlUploadLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('save-screenshot-from-url', {
+        body: {
+          imageUrl: screenshotUrl,
+          interessentId: selectedInteressent.id
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Unbekannter Fehler');
+      }
+
+      toast({
+        title: "Erfolg",
+        description: "Screenshot wurde von URL gespeichert",
+      });
+
+      setIsEmailDialogOpen(false);
+      setScreenshotUrl("");
+      fetchInteressenten();
+
+    } catch (error) {
+      console.error('Error saving screenshot from URL:', error);
+      toast({
+        title: "Fehler",
+        description: error.message || "Screenshot konnte nicht von URL gespeichert werden",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUrlUploadLoading(false);
+    }
   };
 
   const addCall = async (typ: string) => {
@@ -766,25 +811,54 @@ export default function Verwaltung() {
           <DialogHeader>
             <DialogTitle>Email-Screenshot hinzufügen</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="email-file">Screenshot auswählen</Label>
-              <Input
-                id="email-file"
-                type="file"
-                accept="image/*"
-                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsEmailDialogOpen(false)}>
-                Abbrechen
-              </Button>
-              <Button onClick={uploadEmailScreenshot} disabled={!selectedFile}>
-                Hochladen
-              </Button>
-            </div>
-          </div>
+          <Tabs defaultValue="file" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="file">Datei hochladen</TabsTrigger>
+              <TabsTrigger value="url">Von URL</TabsTrigger>
+            </TabsList>
+            <TabsContent value="file" className="space-y-4">
+              <div>
+                <Label htmlFor="email-file">Screenshot auswählen</Label>
+                <Input
+                  id="email-file"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsEmailDialogOpen(false)}>
+                  Abbrechen
+                </Button>
+                <Button onClick={uploadEmailScreenshot} disabled={!selectedFile}>
+                  Hochladen
+                </Button>
+              </div>
+            </TabsContent>
+            <TabsContent value="url" className="space-y-4">
+              <div>
+                <Label htmlFor="screenshot-url">Screenshot URL</Label>
+                <Input
+                  id="screenshot-url"
+                  type="url"
+                  placeholder="https://example.com/screenshot.png"
+                  value={screenshotUrl}
+                  onChange={(e) => setScreenshotUrl(e.target.value)}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsEmailDialogOpen(false)}>
+                  Abbrechen
+                </Button>
+                <Button 
+                  onClick={saveScreenshotFromUrl} 
+                  disabled={!screenshotUrl || isUrlUploadLoading}
+                >
+                  {isUrlUploadLoading ? "Lädt..." : "Speichern"}
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
 
