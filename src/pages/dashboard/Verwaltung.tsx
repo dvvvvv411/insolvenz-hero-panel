@@ -128,6 +128,11 @@ export default function Verwaltung() {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isCallGrundDialogOpen, setIsCallGrundDialogOpen] = useState(false);
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
+  const [detailsImageViewUrl, setDetailsImageViewUrl] = useState<string | null>(null);
+  const [detailsImageViewDialogOpen, setDetailsImageViewDialogOpen] = useState(false);
+  const [editingStatus, setEditingStatus] = useState<string | null>(null);
+  const [editingCallNotwendig, setEditingCallNotwendig] = useState<string | null>(null);
+  const [editingCallGrund, setEditingCallGrund] = useState("");
   const [isCallViewerOpen, setIsCallViewerOpen] = useState(false);
   const [isNotizViewerOpen, setIsNotizViewerOpen] = useState(false);
   const [isNischenDetailOpen, setIsNischenDetailOpen] = useState(false);
@@ -596,7 +601,7 @@ export default function Verwaltung() {
     fetchInteressenten(currentUser);
   };
 
-  const viewEmailScreenshot = async (screenshot: EmailVerlauf) => {
+  const viewEmailScreenshot = async (screenshot: EmailVerlauf, inDetailsDialog = false) => {
     const { data, error } = await supabase.storage
       .from("email-screenshots")
       .createSignedUrl(screenshot.screenshot_path, 600);
@@ -610,9 +615,15 @@ export default function Verwaltung() {
       return;
     }
 
-    setViewImageUrl(data.signedUrl);
     setCurrentViewingScreenshot(screenshot);
-    setIsImageViewerOpen(true);
+    
+    if (inDetailsDialog) {
+      setDetailsImageViewUrl(data.signedUrl);
+      setDetailsImageViewDialogOpen(true);
+    } else {
+      setViewImageUrl(data.signedUrl);
+      setIsImageViewerOpen(true);
+    }
   };
 
   const deleteEmailScreenshot = async (screenshot: EmailVerlauf) => {
@@ -979,7 +990,7 @@ export default function Verwaltung() {
                        <div key={email.id} className="relative">
                          <button
                            className="w-16 h-28 border border-border rounded overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer"
-                           onClick={() => viewEmailScreenshot(email)}
+                            onClick={() => viewEmailScreenshot(email)}
                          >
                            {thumbnailUrls[email.id] ? (
                              <img 
@@ -1452,57 +1463,360 @@ export default function Verwaltung() {
 
       {/* Details Dialog */}
       <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Interessent Details</DialogTitle>
+            <DialogTitle className="text-xl font-bold">Interessent Details - 360° Übersicht</DialogTitle>
           </DialogHeader>
           {selectedInteressent && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <strong>Unternehmensname:</strong>
-                  <div>{selectedInteressent.unternehmensname}</div>
+            <div className="space-y-6">
+              {/* Contact Information Section */}
+              <div className="border rounded-lg p-4 bg-muted/20">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <Info className="w-5 h-5" />
+                  Kontaktinformationen
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Unternehmensname</Label>
+                      <div className="text-base font-medium">{selectedInteressent.unternehmensname}</div>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Ansprechpartner</Label>
+                      <div className="text-base">{selectedInteressent.ansprechpartner}</div>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">E-Mail</Label>
+                      <div className="flex items-center gap-2">
+                        <a 
+                          href={`mailto:${selectedInteressent.email}`}
+                          className="text-base text-primary hover:underline"
+                        >
+                          {selectedInteressent.email}
+                        </a>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(selectedInteressent.email)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Telefonnummer</Label>
+                        <div className="flex items-center gap-2">
+                          <a 
+                            href={`tel:${selectedInteressent.telefonnummer}`}
+                            className="text-base text-primary hover:underline"
+                          >
+                            {selectedInteressent.telefonnummer}
+                          </a>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => copyToClipboard(selectedInteressent.telefonnummer)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      {selectedInteressent.mobilfunknummer && (
+                        <div>
+                          <Label className="text-sm font-medium text-muted-foreground">Mobilfunknummer</Label>
+                          <div className="flex items-center gap-2">
+                            <a 
+                              href={`tel:${selectedInteressent.mobilfunknummer}`}
+                              className="text-base text-primary hover:underline"
+                            >
+                              {selectedInteressent.mobilfunknummer}
+                            </a>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => copyToClipboard(selectedInteressent.mobilfunknummer!)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <strong>Ansprechpartner:</strong>
-                  <div>{selectedInteressent.ansprechpartner}</div>
+              </div>
+
+              {/* Status & Call Management Section */}
+              <div className="border rounded-lg p-4 bg-muted/20">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  Status & Verwaltung
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Nische</Label>
+                      <div className="text-base">{selectedInteressent.nische}</div>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Status</Label>
+                      <Select
+                        value={editingStatus || selectedInteressent.status}
+                        onValueChange={(value) => {
+                          setEditingStatus(value);
+                          updateStatus(selectedInteressent.id, value);
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getStatusOptions().map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Call notwendig</Label>
+                      <Select
+                        value={editingCallNotwendig || selectedInteressent.call_notwendig}
+                        onValueChange={(value) => {
+                          setEditingCallNotwendig(value);
+                          if (value === "Call notwendig") {
+                            setEditingCallGrund(selectedInteressent.call_notwendig_grund || "");
+                          } else {
+                            updateCallNotwendig(selectedInteressent.id, value, "");
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {callOptions.map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {(editingCallNotwendig === "Call notwendig" || selectedInteressent.call_notwendig === "Call notwendig") && (
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Grund für Call</Label>
+                        <Textarea
+                          value={editingCallGrund || selectedInteressent.call_notwendig_grund || ""}
+                          onChange={(e) => setEditingCallGrund(e.target.value)}
+                          onBlur={() => {
+                            if (editingCallNotwendig === "Call notwendig") {
+                              updateCallNotwendig(selectedInteressent.id, "Call notwendig", editingCallGrund);
+                            }
+                          }}
+                          placeholder="Grund für Call eingeben..."
+                          className="min-h-[60px]"
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Erstellt am</Label>
+                      <div className="text-base">{format(new Date(selectedInteressent.created_at), "dd.MM.yyyy HH:mm", { locale: de })}</div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <strong>E-Mail:</strong>
-                  <div>{selectedInteressent.email}</div>
+              </div>
+
+              {/* Email History Section */}
+              <div className="border rounded-lg p-4 bg-muted/20">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Mail className="w-5 h-5" />
+                    Email-Verlauf ({emailVerlauf[selectedInteressent.id]?.length || 0})
+                  </h3>
+                  <Button
+                    onClick={() => {
+                      setIsEmailDialogOpen(true);
+                    }}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Email hinzufügen
+                  </Button>
                 </div>
-                <div>
-                  <strong>Telefonnummer:</strong>
-                  <div>{selectedInteressent.telefonnummer}</div>
-                </div>
-                {selectedInteressent.mobilfunknummer && (
-                  <div>
-                    <strong>Mobilfunknummer:</strong>
-                    <div>{selectedInteressent.mobilfunknummer}</div>
+                {emailVerlauf[selectedInteressent.id]?.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {emailVerlauf[selectedInteressent.id].map((email) => {
+                      const thumbnailUrl = thumbnailUrls[email.id];
+                      return (
+                        <div key={email.id} className="space-y-2">
+                          <div 
+                            className="relative group cursor-pointer border rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+                            onClick={() => viewEmailScreenshot(email, true)}
+                          >
+                            {thumbnailUrl ? (
+                              <img 
+                                src={thumbnailUrl} 
+                                alt="Email Screenshot"
+                                className="w-full h-32 object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-32 bg-muted flex items-center justify-center">
+                                <Mail className="w-8 h-8 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <Eye className="w-6 h-6 text-white" />
+                            </div>
+                          </div>
+                          <div className="text-xs text-muted-foreground text-center">
+                            {format(new Date(email.created_at), "dd.MM.yyyy", { locale: de })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Mail className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>Noch keine Email-Screenshots vorhanden</p>
                   </div>
                 )}
-                <div>
-                  <strong>Nische:</strong>
-                  <div>{selectedInteressent.nische}</div>
+              </div>
+
+              {/* Call History Section */}
+              <div className="border rounded-lg p-4 bg-muted/20">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Phone className="w-5 h-5" />
+                    Call-Verlauf ({callVerlauf[selectedInteressent.id]?.length || 0})
+                  </h3>
+                  <Button
+                    onClick={() => {
+                      setIsCallDialogOpen(true);
+                    }}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Call hinzufügen
+                  </Button>
                 </div>
-                <div>
-                  <strong>Status:</strong>
-                  <div>{selectedInteressent.status}</div>
-                </div>
-                <div>
-                  <strong>Call Notwendig:</strong>
-                  <div>{selectedInteressent.call_notwendig}</div>
-                </div>
-                {selectedInteressent.call_notwendig_grund && (
-                  <div className="col-span-2">
-                    <strong>Call Grund:</strong>
-                    <div>{selectedInteressent.call_notwendig_grund}</div>
+                {callVerlauf[selectedInteressent.id]?.length > 0 ? (
+                  <div className="space-y-3">
+                    {callVerlauf[selectedInteressent.id].map((call) => (
+                      <div key={call.id} className="border rounded-lg p-3 bg-background">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className={`px-2 py-1 rounded text-xs font-medium ${
+                              call.typ === "Call" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+                            }`}>
+                              {call.typ}
+                            </div>
+                            <span className="text-sm text-muted-foreground">
+                              {format(new Date(call.created_at), "dd.MM.yyyy HH:mm", { locale: de })}
+                            </span>
+                          </div>
+                        </div>
+                        {call.notiz && (
+                          <div className="text-sm bg-muted p-2 rounded">
+                            {call.notiz}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Phone className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>Noch keine Calls vorhanden</p>
                   </div>
                 )}
-                <div>
-                  <strong>Erstellt:</strong>
-                  <div>{format(new Date(selectedInteressent.created_at), "dd.MM.yyyy HH:mm", { locale: de })}</div>
+              </div>
+
+              {/* Notes Section */}
+              <div className="border rounded-lg p-4 bg-muted/20">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    Notizen ({notizenVerlauf[selectedInteressent.id]?.length || 0})
+                  </h3>
+                  <Button
+                    onClick={() => {
+                      setIsNotizDialogOpen(true);
+                    }}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Notiz hinzufügen
+                  </Button>
                 </div>
+                {notizenVerlauf[selectedInteressent.id]?.length > 0 ? (
+                  <div className="space-y-3">
+                    {notizenVerlauf[selectedInteressent.id].map((notiz) => (
+                      <div key={notiz.id} className="border rounded-lg p-3 bg-background">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-sm text-muted-foreground">
+                            {format(new Date(notiz.created_at), "dd.MM.yyyy HH:mm", { locale: de })}
+                          </span>
+                        </div>
+                        <div className="text-sm bg-muted p-2 rounded">
+                          {notiz.notiz}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>Noch keine Notizen vorhanden</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Details Image Viewer Dialog */}
+      <Dialog open={detailsImageViewDialogOpen} onOpenChange={setDetailsImageViewDialogOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Email-Screenshot</DialogTitle>
+          </DialogHeader>
+          {detailsImageViewUrl && currentViewingScreenshot && (
+            <div className="w-full space-y-3">
+              <div className="max-h-[70vh] overflow-auto">
+                <img src={detailsImageViewUrl} alt="Email Screenshot" className="max-w-full h-auto" />
+              </div>
+              <div className="text-sm text-muted-foreground text-center">
+                Hinzugefügt am {format(new Date(currentViewingScreenshot.created_at), "dd.MM.yyyy, HH:mm", { locale: de })}
+              </div>
+              <div className="flex justify-end mt-4">
+                {currentViewingScreenshot && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      deleteEmailScreenshot(currentViewingScreenshot);
+                      setDetailsImageViewDialogOpen(false);
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Löschen
+                  </Button>
+                )}
               </div>
             </div>
           )}
