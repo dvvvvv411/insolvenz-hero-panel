@@ -13,8 +13,9 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Phone, Mail, FileText, Eye, Trash2, Info } from "lucide-react";
+import { Plus, Phone, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -62,6 +63,18 @@ interface Notiz {
   created_at: string;
 }
 
+interface NischenDetails {
+  id: string;
+  nische: string;
+  insolventes_unternehmen?: string;
+  empfaenger: number;
+  kanzlei?: string;
+  pkw_dropbox_url?: string;
+  transporter_dropbox_url?: string;
+  bestandsliste_path?: string;
+  created_at: string;
+}
+
 const statusOptions = [
   "Mail raus",
   "KV versendet", 
@@ -102,6 +115,7 @@ export default function Verwaltung() {
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [isCallViewerOpen, setIsCallViewerOpen] = useState(false);
   const [isNotizViewerOpen, setIsNotizViewerOpen] = useState(false);
+  const [isNischenDetailOpen, setIsNischenDetailOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedInteressent, setSelectedInteressent] = useState<Interessent | null>(null);
   const [screenshotUrl, setScreenshotUrl] = useState("");
@@ -118,6 +132,8 @@ export default function Verwaltung() {
   const [viewImageUrl, setViewImageUrl] = useState<string | null>(null);
   const [viewCall, setViewCall] = useState<CallVerlauf | null>(null);
   const [viewNotiz, setViewNotiz] = useState<Notiz | null>(null);
+  const [selectedNischenDetails, setSelectedNischenDetails] = useState<NischenDetails | null>(null);
+  const [nischenDetailsMap, setNischenDetailsMap] = useState<Record<string, NischenDetails>>({});
   const [showHidden, setShowHidden] = useState(false);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -140,7 +156,7 @@ export default function Verwaltung() {
 
     const { data, error } = await supabase
       .from("nischen")
-      .select("nische")
+      .select("*")
       .eq("user_id", user.user.id);
 
     if (error) {
@@ -154,6 +170,13 @@ export default function Verwaltung() {
 
     const uniqueNischen = [...new Set(data.map(item => item.nische))];
     setNischen(uniqueNischen);
+    
+    // Create a map for nischen details
+    const detailsMap: Record<string, NischenDetails> = {};
+    data.forEach(item => {
+      detailsMap[item.nische] = item;
+    });
+    setNischenDetailsMap(detailsMap);
   };
 
   const fetchInteressenten = async () => {
@@ -240,6 +263,61 @@ export default function Verwaltung() {
       notizenMap[item.interessent_id].push(item);
     });
     setNotizenVerlauf(notizenMap);
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Kopiert",
+        description: "Telefonnummer wurde in die Zwischenablage kopiert",
+      });
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Telefonnummer konnte nicht kopiert werden",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleContactClick = (interessent: Interessent) => {
+    const phoneNumber = interessent.mobilfunknummer || interessent.telefonnummer;
+    copyToClipboard(phoneNumber);
+  };
+
+  const handleNischenDetailClick = (nische: string) => {
+    const details = nischenDetailsMap[nische];
+    if (details) {
+      setSelectedNischenDetails(details);
+      setIsNischenDetailOpen(true);
+    }
+  };
+
+  const downloadBestandsliste = async (path: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from("bestandslisten")
+        .createSignedUrl(path, 300);
+
+      if (error || !data) {
+        toast({
+          title: "Fehler",
+          description: "Bestandsliste konnte nicht geladen werden",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Open the signed URL in a new tab to download
+      window.open(data.signedUrl, '_blank');
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Bestandsliste konnte nicht heruntergeladen werden",
+        variant: "destructive",
+      });
+    }
   };
 
   const onSubmit = async (data: FormData) => {
@@ -720,13 +798,37 @@ export default function Verwaltung() {
                     <div className="font-medium">{interessent.unternehmensname}</div>
                     <div className="text-sm text-muted-foreground">{interessent.ansprechpartner}</div>
                     <div className="text-sm text-muted-foreground">{interessent.email}</div>
-                    <div className="text-sm text-muted-foreground">{interessent.telefonnummer}</div>
+                    <button 
+                      className="text-sm text-muted-foreground hover:text-primary hover:underline cursor-pointer text-left"
+                      onClick={() => handleContactClick(interessent)}
+                      title="Klicken zum Kopieren"
+                    >
+                      {interessent.telefonnummer}
+                    </button>
                     {interessent.mobilfunknummer && (
-                      <div className="text-sm text-muted-foreground">{interessent.mobilfunknummer}</div>
+                      <button 
+                        className="text-sm text-muted-foreground hover:text-primary hover:underline cursor-pointer text-left block"
+                        onClick={() => handleContactClick(interessent)}
+                        title="Klicken zum Kopieren"
+                      >
+                        {interessent.mobilfunknummer}
+                      </button>
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="px-2 py-2 whitespace-nowrap">{interessent.nische}</TableCell>
+                <TableCell className="px-2 py-2 whitespace-nowrap">
+                  <div className="flex items-center gap-1">
+                    <span>{interessent.nische}</span>
+                    {nischenDetailsMap[interessent.nische] && (
+                      <button
+                        onClick={() => handleNischenDetailClick(interessent.nische)}
+                        className="text-muted-foreground hover:text-primary transition-colors"
+                      >
+                        <Info className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="px-2 py-2">
                   <div className="flex gap-1 flex-wrap">
                      {emailVerlauf[interessent.id]?.map((email, index) => (
@@ -750,12 +852,12 @@ export default function Verwaltung() {
                          <TooltipProvider>
                            <Tooltip>
                              <TooltipTrigger asChild>
-                               <button
-                                 className="absolute top-1 right-1 w-4 h-4 bg-background/80 rounded-full flex items-center justify-center hover:bg-background transition-colors"
-                                 onClick={(e) => e.stopPropagation()}
-                               >
-                                 <Info className="w-2.5 h-2.5 text-muted-foreground" />
-                               </button>
+                                <button
+                                  className="absolute top-1 right-1 w-5 h-5 bg-background/80 rounded-full flex items-center justify-center hover:bg-background transition-colors"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Info className="w-3 h-3 text-muted-foreground" />
+                                </button>
                              </TooltipTrigger>
                              <TooltipContent>
                                <p>Hinzugefügt am {format(new Date(email.created_at), "dd.MM.yyyy, HH:mm", { locale: de })}</p>
@@ -791,17 +893,17 @@ export default function Verwaltung() {
                              setIsCallViewerOpen(true);
                            }}
                          >
-                           {call.typ} {index + 1}
+                           {call.typ.replace("Mailbox", "MB")} {index + 1}
                          </Button>
                          <TooltipProvider>
                            <Tooltip>
                              <TooltipTrigger asChild>
-                               <button
-                                 className="absolute top-1 right-1 w-4 h-4 flex items-center justify-center hover:bg-muted rounded-sm transition-colors"
-                                 onClick={(e) => e.stopPropagation()}
-                               >
-                                 <Info className="w-2.5 h-2.5 text-muted-foreground" />
-                               </button>
+                                <button
+                                  className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center hover:bg-muted rounded-sm transition-colors"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Info className="w-3 h-3 text-muted-foreground" />
+                                </button>
                              </TooltipTrigger>
                              <TooltipContent>
                                <p>Eingetragen am {format(new Date(call.created_at), "dd.MM.yyyy, HH:mm", { locale: de })}</p>
@@ -1194,6 +1296,91 @@ export default function Verwaltung() {
                   <strong>Erstellt:</strong>
                   <div>{format(new Date(selectedInteressent.created_at), "dd.MM.yyyy HH:mm", { locale: de })}</div>
                 </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Nischen Detail Dialog */}
+      <Dialog open={isNischenDetailOpen} onOpenChange={setIsNischenDetailOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Nischen Details</DialogTitle>
+          </DialogHeader>
+          {selectedNischenDetails && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <strong>Nische:</strong>
+                  <div>{selectedNischenDetails.nische}</div>
+                </div>
+                <div>
+                  <strong>Empfänger:</strong>
+                  <div>{selectedNischenDetails.empfaenger}</div>
+                </div>
+                {selectedNischenDetails.insolventes_unternehmen && (
+                  <div>
+                    <strong>Insolventes Unternehmen:</strong>
+                    <div>{selectedNischenDetails.insolventes_unternehmen}</div>
+                  </div>
+                )}
+                {selectedNischenDetails.kanzlei && (
+                  <div>
+                    <strong>Kanzlei:</strong>
+                    <div>{selectedNischenDetails.kanzlei}</div>
+                  </div>
+                )}
+                <div>
+                  <strong>Erstellt:</strong>
+                  <div>{format(new Date(selectedNischenDetails.created_at), "dd.MM.yyyy HH:mm", { locale: de })}</div>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <h4 className="font-medium">Dateien & Links</h4>
+                
+                {selectedNischenDetails.bestandsliste_path && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => downloadBestandsliste(selectedNischenDetails.bestandsliste_path!)}
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      Bestandsliste herunterladen
+                    </Button>
+                  </div>
+                )}
+                
+                {selectedNischenDetails.pkw_dropbox_url && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(selectedNischenDetails.pkw_dropbox_url, '_blank')}
+                      className="flex items-center gap-2"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      PKW Dropbox Link
+                    </Button>
+                  </div>
+                )}
+                
+                {selectedNischenDetails.transporter_dropbox_url && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(selectedNischenDetails.transporter_dropbox_url, '_blank')}
+                      className="flex items-center gap-2"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Transporter Dropbox Link
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           )}
