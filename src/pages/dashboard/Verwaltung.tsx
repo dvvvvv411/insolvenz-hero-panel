@@ -13,7 +13,7 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Phone, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings } from "lucide-react";
+import { Plus, Phone, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings, X } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -154,6 +154,7 @@ export default function Verwaltung() {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isStatusReorderOpen, setIsStatusReorderOpen] = useState(false);
   const [statusOrder, setStatusOrder] = useState(getStatusOrder());
+  const [newStatusName, setNewStatusName] = useState("");
   const { toast } = useToast();
 
   const form = useForm<FormData>({
@@ -648,6 +649,68 @@ export default function Verwaltung() {
     items.splice(result.destination.index, 0, reorderedItem);
 
     saveStatusOrder(items);
+  };
+
+  const addNewStatus = () => {
+    if (!newStatusName.trim()) return;
+    
+    const trimmedName = newStatusName.trim();
+    
+    // Check for duplicates (case-insensitive)
+    if (statusOrder.some(status => status.toLowerCase() === trimmedName.toLowerCase())) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Dieser Status existiert bereits.",
+      });
+      return;
+    }
+    
+    // Check for reserved names
+    const reservedNames = ["neu", "kontakt", "verhandlung", "abgeschlossen", "kein interesse"];
+    if (reservedNames.includes(trimmedName.toLowerCase())) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Dieser Status-Name ist reserviert.",
+      });
+      return;
+    }
+    
+    const newOrder = [...statusOrder, trimmedName];
+    saveStatusOrder(newOrder);
+    setNewStatusName("");
+    
+    toast({
+      title: "Erfolg",
+      description: `Status "${trimmedName}" wurde hinzugefügt.`,
+    });
+  };
+
+  const deleteStatus = (statusToDelete: string) => {
+    // Check if status is in use
+    const usageCount = interessenten.filter(i => i.status === statusToDelete).length;
+    
+    if (usageCount > 0) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: `Dieser Status wird von ${usageCount} Interessent${usageCount > 1 ? 'en' : ''} verwendet und kann nicht gelöscht werden.`,
+      });
+      return;
+    }
+    
+    const newOrder = statusOrder.filter(status => status !== statusToDelete);
+    saveStatusOrder(newOrder);
+    
+    toast({
+      title: "Erfolg",
+      description: `Status "${statusToDelete}" wurde gelöscht.`,
+    });
+  };
+
+  const getStatusUsageCount = (status: string) => {
+    return interessenten.filter(i => i.status === status).length;
   };
 
   const getSortedInteressenten = () => {
@@ -1483,28 +1546,79 @@ export default function Verwaltung() {
                     ref={provided.innerRef}
                     className="space-y-2"
                   >
-                    {statusOrder.map((status, index) => (
-                      <Draggable key={status} draggableId={status} index={index}>
-                        {(provided, snapshot) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            className={`flex items-center gap-2 p-3 border rounded-md bg-background cursor-move ${
-                              snapshot.isDragging ? 'shadow-lg border-primary' : ''
-                            }`}
-                          >
-                            <GripVertical className="w-4 h-4 text-muted-foreground" />
-                            <span className="font-medium">{status}</span>
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
+                    {statusOrder.map((status, index) => {
+                      const usageCount = getStatusUsageCount(status);
+                      const canDelete = usageCount === 0;
+                      
+                      return (
+                        <Draggable key={status} draggableId={status} index={index}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              className={`flex items-center gap-2 p-3 border rounded-md bg-background ${
+                                snapshot.isDragging ? 'shadow-lg border-primary' : ''
+                              }`}
+                            >
+                              <div 
+                                {...provided.dragHandleProps}
+                                className="cursor-move"
+                              >
+                                <GripVertical className="w-4 h-4 text-muted-foreground" />
+                              </div>
+                              <span className="font-medium flex-1">{status}</span>
+                              {usageCount > 0 && (
+                                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                                  {usageCount}
+                                </span>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`h-8 w-8 p-0 ${!canDelete ? 'opacity-50 cursor-not-allowed' : 'hover:bg-destructive hover:text-destructive-foreground'}`}
+                                onClick={() => canDelete && deleteStatus(status)}
+                                disabled={!canDelete}
+                                title={canDelete ? `Status "${status}" löschen` : `Status wird von ${usageCount} Interessent${usageCount > 1 ? 'en' : ''} verwendet`}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </Draggable>
+                      );
+                    })}
                     {provided.placeholder}
                   </div>
                 )}
               </Droppable>
             </DragDropContext>
+            
+            {/* Add new status section */}
+            <div className="border-t pt-4 space-y-3">
+              <p className="text-sm font-medium">Neuen Status hinzufügen:</p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Status-Name eingeben..."
+                  value={newStatusName}
+                  onChange={(e) => setNewStatusName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addNewStatus();
+                    }
+                  }}
+                  className="flex-1"
+                />
+                <Button 
+                  onClick={addNewStatus}
+                  disabled={!newStatusName.trim()}
+                  variant="default"
+                >
+                  Hinzufügen
+                </Button>
+              </div>
+            </div>
+            
             <div className="flex justify-end gap-2 pt-4">
               <Button variant="outline" onClick={() => setIsStatusReorderOpen(false)}>
                 Schließen
