@@ -14,6 +14,153 @@ export type Database = {
   }
   public: {
     Tables: {
+      interessenten: {
+        Row: {
+          ansprechpartner: string
+          call_notwendig: string
+          call_notwendig_grund: string | null
+          created_at: string
+          email: string
+          id: string
+          mobilfunknummer: string | null
+          nische: string
+          status: string
+          telefonnummer: string
+          unternehmensname: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ansprechpartner: string
+          call_notwendig?: string
+          call_notwendig_grund?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          mobilfunknummer?: string | null
+          nische: string
+          status?: string
+          telefonnummer: string
+          unternehmensname: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ansprechpartner?: string
+          call_notwendig?: string
+          call_notwendig_grund?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          mobilfunknummer?: string | null
+          nische?: string
+          status?: string
+          telefonnummer?: string
+          unternehmensname?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      interessenten_calls: {
+        Row: {
+          created_at: string
+          id: string
+          interessent_id: string
+          notiz: string | null
+          typ: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interessent_id: string
+          notiz?: string | null
+          typ?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interessent_id?: string
+          notiz?: string | null
+          typ?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interessenten_calls_interessent_id_fkey"
+            columns: ["interessent_id"]
+            isOneToOne: false
+            referencedRelation: "interessenten"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interessenten_email_verlauf: {
+        Row: {
+          created_at: string
+          id: string
+          interessent_id: string
+          screenshot_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interessent_id: string
+          screenshot_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interessent_id?: string
+          screenshot_path?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interessenten_email_verlauf_interessent_id_fkey"
+            columns: ["interessent_id"]
+            isOneToOne: false
+            referencedRelation: "interessenten"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interessenten_notizen: {
+        Row: {
+          created_at: string
+          id: string
+          interessent_id: string
+          notiz: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interessent_id: string
+          notiz: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interessent_id?: string
+          notiz?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interessenten_notizen_interessent_id_fkey"
+            columns: ["interessent_id"]
+            isOneToOne: false
+            referencedRelation: "interessenten"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nischen: {
         Row: {
           bestandsliste_path: string | null

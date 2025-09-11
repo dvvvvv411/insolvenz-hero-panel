@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Nischen from "./pages/dashboard/Nischen";
+import Verwaltung from "./pages/dashboard/Verwaltung";
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { DashboardLayout } from "@/components/layouts/DashboardLayout";
@@ -29,6 +30,16 @@ const App = () => (
               <ProtectedRoute>
                 <DashboardLayout>
                   <Nischen />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/dashboard/verwaltung" 
+            element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <Verwaltung />
                 </DashboardLayout>
               </ProtectedRoute>
             } 

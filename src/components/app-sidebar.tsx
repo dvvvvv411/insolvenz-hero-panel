@@ -1,4 +1,4 @@
-import { Building2, LogOut } from "lucide-react";
+import { Building2, LogOut, Users } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -23,6 +23,11 @@ const navigationItems = [
     title: "Nischen",
     url: "/dashboard/nischen",
     icon: Building2,
+  },
+  {
+    title: "Verwaltung",
+    url: "/dashboard/verwaltung",
+    icon: Users,
   },
 ];
 
