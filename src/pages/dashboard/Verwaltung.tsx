@@ -1304,25 +1304,25 @@ export default function Verwaltung() {
       <Dialog open={isImageViewerOpen} onOpenChange={setIsImageViewerOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle>Email-Screenshot</DialogTitle>
-              {currentViewingScreenshot && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => deleteEmailScreenshot(currentViewingScreenshot)}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Löschen
-                </Button>
-              )}
-            </div>
+            <DialogTitle>Email-Screenshot</DialogTitle>
           </DialogHeader>
           {viewImageUrl && currentViewingScreenshot && (
             <div className="w-full space-y-3">
               <img src={viewImageUrl} alt="Email Screenshot" className="max-w-full h-auto" />
               <div className="text-sm text-muted-foreground text-center">
                 Hinzugefügt am {format(new Date(currentViewingScreenshot.created_at), "dd.MM.yyyy, HH:mm", { locale: de })}
+              </div>
+              <div className="flex justify-end mt-4">
+                {currentViewingScreenshot && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => deleteEmailScreenshot(currentViewingScreenshot)}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Löschen
+                  </Button>
+                )}
               </div>
             </div>
           )}
