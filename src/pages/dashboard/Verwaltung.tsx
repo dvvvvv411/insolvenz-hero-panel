@@ -703,7 +703,7 @@ export default function Verwaltung() {
             <TableRow>
               <TableHead className="px-2 py-2 w-40">Kontakt</TableHead>
               <TableHead className="px-2 py-2 w-24">Nische</TableHead>
-              <TableHead className="px-2 py-2 w-32">Email-Verlauf</TableHead>
+              <TableHead className="px-2 py-2 w-40">Email-Verlauf</TableHead>
               <TableHead className="px-2 py-2 w-32">Call-Verlauf</TableHead>
               <TableHead className="px-2 py-2 w-32">Notizen</TableHead>
               <TableHead className="px-2 py-2 w-28">Status</TableHead>
@@ -727,11 +727,11 @@ export default function Verwaltung() {
                 </TableCell>
                 <TableCell className="px-2 py-2 whitespace-nowrap">{interessent.nische}</TableCell>
                 <TableCell className="px-2 py-2">
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-col gap-1">
                     {emailVerlauf[interessent.id]?.map((email, index) => (
                       <button
                         key={email.id}
-                        className="w-8 h-8 border border-border rounded overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer"
+                        className="w-16 h-28 border border-border rounded overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer"
                         onClick={() => viewEmailScreenshot(email)}
                       >
                         {thumbnailUrls[email.id] ? (
@@ -742,7 +742,7 @@ export default function Verwaltung() {
                           />
                         ) : (
                           <div className="w-full h-full bg-muted flex items-center justify-center">
-                            <Eye className="w-3 h-3 text-muted-foreground" />
+                            <Eye className="w-4 h-4 text-muted-foreground" />
                           </div>
                         )}
                       </button>
@@ -750,7 +750,7 @@ export default function Verwaltung() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-8 px-2"
+                      className="h-8 px-2 mt-1"
                       onClick={() => {
                         setSelectedInteressent(interessent);
                         setUploadMethod("file");
