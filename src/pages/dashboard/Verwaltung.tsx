@@ -44,6 +44,7 @@ interface Interessent {
   call_notwendig: string;
   call_notwendig_grund?: string;
   created_at: string;
+  updated_at: string;
 }
 
 interface EmailVerlauf {
@@ -608,11 +609,13 @@ export default function Verwaltung() {
   };
 
   const updateStatus = async (interessentId: string, newStatus: string) => {
+    const now = new Date().toISOString();
+    
     // Optimistic update - update UI immediately
     setInteressenten(prev => 
       prev.map(interessent => 
         interessent.id === interessentId 
-          ? { ...interessent, status: newStatus }
+          ? { ...interessent, status: newStatus, updated_at: now }
           : interessent
       )
     );
@@ -621,7 +624,7 @@ export default function Verwaltung() {
     try {
       const { error } = await supabase
         .from("interessenten")
-        .update({ status: newStatus })
+        .update({ status: newStatus, updated_at: now })
         .eq("id", interessentId);
 
       if (error) {
@@ -1481,44 +1484,51 @@ export default function Verwaltung() {
                   </div>
                 </TableCell>
                  <TableCell className="px-2 py-2">
-                   <Select
-                     value={interessent.status}
-                     onValueChange={(value) => updateStatus(interessent.id, value)}
-                   >
-                     <SelectTrigger 
-                       className="h-8 text-xs"
-                       style={statusColors[interessent.status] ? {
-                         backgroundColor: statusColors[interessent.status],
-                         color: getContrastingTextColor(statusColors[interessent.status]),
-                         borderColor: statusColors[interessent.status]
-                       } : {}}
+                   <div className="space-y-1">
+                     <Select
+                       value={interessent.status}
+                       onValueChange={(value) => updateStatus(interessent.id, value)}
                      >
-                       <SelectValue />
-                     </SelectTrigger>
-                    <SelectContent>
-                      {getStatusOptions().map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {status}
-                        </SelectItem>
-                      ))}
-                      <div className="border-t p-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="w-full text-primary border-primary hover:bg-primary hover:text-primary-foreground"
-                           onClick={(e) => {
-                             e.preventDefault();
-                             e.stopPropagation();
-                             setStatusColors(getStatusColors()); // Reload colors from localStorage
-                             setIsStatusReorderOpen(true);
-                           }}
-                        >
-                          <Settings className="w-3 h-3 mr-1" />
-                          Reihenfolge ändern
-                        </Button>
+                       <SelectTrigger 
+                         className="h-8 text-xs"
+                         style={statusColors[interessent.status] ? {
+                           backgroundColor: statusColors[interessent.status],
+                           color: getContrastingTextColor(statusColors[interessent.status]),
+                           borderColor: statusColors[interessent.status]
+                         } : {}}
+                       >
+                         <SelectValue />
+                       </SelectTrigger>
+                      <SelectContent>
+                        {getStatusOptions().map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {status}
+                          </SelectItem>
+                        ))}
+                        <div className="border-t p-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full text-primary border-primary hover:bg-primary hover:text-primary-foreground"
+                             onClick={(e) => {
+                               e.preventDefault();
+                               e.stopPropagation();
+                               setStatusColors(getStatusColors()); // Reload colors from localStorage
+                               setIsStatusReorderOpen(true);
+                             }}
+                          >
+                            <Settings className="w-3 h-3 mr-1" />
+                            Reihenfolge ändern
+                          </Button>
+                        </div>
+                      </SelectContent>
+                    </Select>
+                    {interessent.updated_at !== interessent.created_at && (
+                      <div className="text-xs text-muted-foreground">
+                        Geändert: {format(new Date(interessent.updated_at), "dd.MM.yyyy, HH:mm", { locale: de })}
                       </div>
-                    </SelectContent>
-                  </Select>
+                    )}
+                   </div>
                 </TableCell>
                 <TableCell className="px-2 py-2">
                   <div className="relative">
