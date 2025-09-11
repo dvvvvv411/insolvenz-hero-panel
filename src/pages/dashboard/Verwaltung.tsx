@@ -13,7 +13,8 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Phone, Mail, FileText, Eye, Trash2 } from "lucide-react";
+import { Plus, Phone, Mail, FileText, Eye, Trash2, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -105,7 +106,7 @@ export default function Verwaltung() {
   const [selectedInteressent, setSelectedInteressent] = useState<Interessent | null>(null);
   const [screenshotUrl, setScreenshotUrl] = useState("");
   const [isUrlUploadLoading, setIsUrlUploadLoading] = useState(false);
-  const [uploadMethod, setUploadMethod] = useState<"file" | "url">("file");
+  const [uploadMethod, setUploadMethod] = useState<"file" | "url">("url");
   const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({});
   const [currentViewingScreenshot, setCurrentViewingScreenshot] = useState<EmailVerlauf | null>(null);
   const [callNotiz, setCallNotiz] = useState("");
@@ -728,34 +729,50 @@ export default function Verwaltung() {
                 <TableCell className="px-2 py-2 whitespace-nowrap">{interessent.nische}</TableCell>
                 <TableCell className="px-2 py-2">
                   <div className="flex gap-1 flex-wrap">
-                    {emailVerlauf[interessent.id]?.map((email, index) => (
-                      <button
-                        key={email.id}
-                        className="w-16 h-28 border border-border rounded overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer"
-                        onClick={() => viewEmailScreenshot(email)}
-                      >
-                        {thumbnailUrls[email.id] ? (
-                          <img 
-                            src={thumbnailUrls[email.id]} 
-                            alt={`Screenshot ${index + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-muted flex items-center justify-center">
-                            <Eye className="w-4 h-4 text-muted-foreground" />
-                          </div>
-                        )}
-                      </button>
-                    ))}
+                     {emailVerlauf[interessent.id]?.map((email, index) => (
+                       <div key={email.id} className="relative">
+                         <button
+                           className="w-16 h-28 border border-border rounded overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer"
+                           onClick={() => viewEmailScreenshot(email)}
+                         >
+                           {thumbnailUrls[email.id] ? (
+                             <img 
+                               src={thumbnailUrls[email.id]} 
+                               alt={`Screenshot ${index + 1}`}
+                               className="w-full h-full object-cover"
+                             />
+                           ) : (
+                             <div className="w-full h-full bg-muted flex items-center justify-center">
+                               <Eye className="w-4 h-4 text-muted-foreground" />
+                             </div>
+                           )}
+                         </button>
+                         <TooltipProvider>
+                           <Tooltip>
+                             <TooltipTrigger asChild>
+                               <button
+                                 className="absolute top-1 right-1 w-4 h-4 bg-background/80 rounded-full flex items-center justify-center hover:bg-background transition-colors"
+                                 onClick={(e) => e.stopPropagation()}
+                               >
+                                 <Info className="w-2.5 h-2.5 text-muted-foreground" />
+                               </button>
+                             </TooltipTrigger>
+                             <TooltipContent>
+                               <p>Hinzugefügt am {format(new Date(email.created_at), "dd.MM.yyyy, HH:mm", { locale: de })}</p>
+                             </TooltipContent>
+                           </Tooltip>
+                         </TooltipProvider>
+                       </div>
+                     ))}
                     <Button
                       variant="outline"
                       size="sm"
                       className="h-8 px-2 mt-1"
-                      onClick={() => {
-                        setSelectedInteressent(interessent);
-                        setUploadMethod("file");
-                        setIsEmailDialogOpen(true);
-                      }}
+                       onClick={() => {
+                         setSelectedInteressent(interessent);
+                         setUploadMethod("url");
+                         setIsEmailDialogOpen(true);
+                       }}
                     >
                       <Plus className="w-3 h-3" />
                     </Button>
@@ -763,20 +780,36 @@ export default function Verwaltung() {
                 </TableCell>
                 <TableCell className="px-2 py-2">
                   <div className="flex flex-wrap gap-1">
-                    {callVerlauf[interessent.id]?.map((call, index) => (
-                      <Button
-                        key={call.id}
-                        variant="outline"
-                        size="sm"
-                        className="h-8 px-2 text-xs"
-                        onClick={() => {
-                          setViewCall(call);
-                          setIsCallViewerOpen(true);
-                        }}
-                      >
-                        {call.typ} {index + 1}
-                      </Button>
-                    ))}
+                     {callVerlauf[interessent.id]?.map((call, index) => (
+                       <div key={call.id} className="relative inline-block">
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           className="h-8 px-2 pr-6 text-xs"
+                           onClick={() => {
+                             setViewCall(call);
+                             setIsCallViewerOpen(true);
+                           }}
+                         >
+                           {call.typ} {index + 1}
+                         </Button>
+                         <TooltipProvider>
+                           <Tooltip>
+                             <TooltipTrigger asChild>
+                               <button
+                                 className="absolute top-1 right-1 w-4 h-4 flex items-center justify-center hover:bg-muted rounded-sm transition-colors"
+                                 onClick={(e) => e.stopPropagation()}
+                               >
+                                 <Info className="w-2.5 h-2.5 text-muted-foreground" />
+                               </button>
+                             </TooltipTrigger>
+                             <TooltipContent>
+                               <p>Eingetragen am {format(new Date(call.created_at), "dd.MM.yyyy, HH:mm", { locale: de })}</p>
+                             </TooltipContent>
+                           </Tooltip>
+                         </TooltipProvider>
+                       </div>
+                     ))}
                     <Button
                       variant="outline"
                       size="sm"
