@@ -852,12 +852,12 @@ export default function Verwaltung() {
                          <TooltipProvider>
                            <Tooltip>
                              <TooltipTrigger asChild>
-                                <button
-                                  className="absolute top-1 right-1 w-5 h-5 bg-background/80 rounded-full flex items-center justify-center hover:bg-background transition-colors"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Info className="w-3 h-3 text-muted-foreground" />
-                                </button>
+                                 <button
+                                   className="absolute top-1 right-1 w-8 h-8 bg-background/80 rounded-full flex items-center justify-center hover:bg-background transition-colors"
+                                   onClick={(e) => e.stopPropagation()}
+                                 >
+                                   <Info className="w-6 h-6 text-muted-foreground" />
+                                 </button>
                              </TooltipTrigger>
                              <TooltipContent>
                                <p>Hinzugefügt am {format(new Date(email.created_at), "dd.MM.yyyy, HH:mm", { locale: de })}</p>
@@ -898,12 +898,12 @@ export default function Verwaltung() {
                          <TooltipProvider>
                            <Tooltip>
                              <TooltipTrigger asChild>
-                                <button
-                                  className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center hover:bg-muted rounded-sm transition-colors"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Info className="w-3 h-3 text-muted-foreground" />
-                                </button>
+                                 <button
+                                   className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center hover:bg-muted rounded-sm transition-colors"
+                                   onClick={(e) => e.stopPropagation()}
+                                 >
+                                   <Info className="w-4 h-4 text-muted-foreground" />
+                                 </button>
                              </TooltipTrigger>
                              <TooltipContent>
                                <p>Eingetragen am {format(new Date(call.created_at), "dd.MM.yyyy, HH:mm", { locale: de })}</p>
