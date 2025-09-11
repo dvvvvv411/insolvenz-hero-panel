@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Upload, ExternalLink, Trash2, Package } from "lucide-react";
+import { Plus, Upload, ExternalLink, Trash2, Package, FileText, Pencil } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -62,12 +62,30 @@ interface Nische {
 export default function Nischen() {
   const [nischen, setNischen] = useState<Nische[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isPdfOpen, setIsPdfOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPdfLoading, setIsPdfLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedEditFile, setSelectedEditFile] = useState<File | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [editingNische, setEditingNische] = useState<Nische | null>(null);
   const { toast } = useToast();
   const { user } = useSupabaseAuth();
 
   const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      nische: "",
+      insolventes_unternehmen: "",
+      empfaenger: 1,
+      transporter_dropbox_url: "",
+      pkw_dropbox_url: "",
+      kanzlei: "",
+    },
+  });
+
+  const editForm = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       nische: "",
@@ -170,6 +188,102 @@ export default function Nischen() {
         variant: "destructive",
         title: "Fehler",
         description: "Nische konnte nicht erstellt werden",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOpenPdf = async (path: string) => {
+    if (!path) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Keine PDF-Datei verfügbar",
+      });
+      return;
+    }
+
+    setIsPdfLoading(true);
+    try {
+      const { data, error } = await supabase.storage
+        .from("bestandslisten")
+        .createSignedUrl(path, 600);
+
+      if (error) throw error;
+
+      setPdfUrl(data.signedUrl);
+      setIsPdfOpen(true);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "PDF konnte nicht geladen werden",
+      });
+    } finally {
+      setIsPdfLoading(false);
+    }
+  };
+
+  const handleEdit = (nische: Nische) => {
+    setEditingNische(nische);
+    editForm.reset({
+      nische: nische.nische,
+      insolventes_unternehmen: nische.insolventes_unternehmen || "",
+      empfaenger: nische.empfaenger,
+      transporter_dropbox_url: nische.transporter_dropbox_url || "",
+      pkw_dropbox_url: nische.pkw_dropbox_url || "",
+      kanzlei: nische.kanzlei || "",
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const onEditSubmit = async (data: FormData) => {
+    if (!user || !editingNische) return;
+
+    setIsLoading(true);
+
+    try {
+      let bestandsliste_path = editingNische.bestandsliste_path;
+
+      if (selectedEditFile) {
+        bestandsliste_path = await uploadFile(selectedEditFile);
+        if (!bestandsliste_path) {
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      const { error } = await supabase
+        .from("nischen")
+        .update({
+          nische: data.nische,
+          insolventes_unternehmen: data.insolventes_unternehmen || null,
+          empfaenger: data.empfaenger,
+          bestandsliste_path,
+          transporter_dropbox_url: data.transporter_dropbox_url || null,
+          pkw_dropbox_url: data.pkw_dropbox_url || null,
+          kanzlei: data.kanzlei || null,
+        })
+        .eq("id", editingNische.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Erfolg",
+        description: "Nische wurde erfolgreich aktualisiert",
+      });
+
+      editForm.reset();
+      setSelectedEditFile(null);
+      setIsEditDialogOpen(false);
+      setEditingNische(null);
+      fetchNischen();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Nische konnte nicht aktualisiert werden",
       });
     } finally {
       setIsLoading(false);
@@ -365,78 +479,108 @@ export default function Nischen() {
               </p>
             </div>
           ) : (
-            <Table>
+            <Table className="text-sm">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nische</TableHead>
-                  <TableHead>Empfänger</TableHead>
-                  <TableHead>Bestandsliste</TableHead>
-                  <TableHead>Transporter</TableHead>
-                  <TableHead>PKW</TableHead>
-                  <TableHead>Kanzlei</TableHead>
-                  <TableHead>Erstellt</TableHead>
-                  <TableHead className="w-[100px]">Aktionen</TableHead>
+                  <TableHead className="px-2 py-2">Nische</TableHead>
+                  <TableHead className="px-2 py-2">Empfänger</TableHead>
+                  <TableHead className="px-2 py-2">Bestandsliste</TableHead>
+                  <TableHead className="px-2 py-2">Transporter</TableHead>
+                  <TableHead className="px-2 py-2">PKW</TableHead>
+                  <TableHead className="px-2 py-2">Kanzlei</TableHead>
+                  <TableHead className="px-2 py-2 w-28">Erstellt</TableHead>
+                  <TableHead className="px-2 py-2 w-32">Aktionen</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {nischen.map((nische) => (
                   <TableRow key={nische.id}>
-                    <TableCell className="font-medium">{nische.nische}</TableCell>
-                    <TableCell>{nische.empfaenger.toLocaleString()}</TableCell>
-                    <TableCell>
-                      {nische.bestandsliste_path ? (
-                        <span className="text-sm text-green-600">✓ Hochgeladen</span>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">Keine Datei</span>
+                    <TableCell className="px-2 py-2 font-medium whitespace-nowrap">
+                      <div className="max-w-32 truncate">{nische.nische}</div>
+                      {nische.insolventes_unternehmen && (
+                        <div className="text-xs text-muted-foreground max-w-32 truncate">
+                          {nische.insolventes_unternehmen}
+                        </div>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-2 py-2 whitespace-nowrap">
+                      {nische.empfaenger.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="px-2 py-2">
+                      {nische.bestandsliste_path ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenPdf(nische.bestandsliste_path!)}
+                          disabled={isPdfLoading}
+                          className="h-7 px-2 text-xs"
+                        >
+                          <FileText className="h-3 w-3 mr-1" />
+                          Öffnen
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Keine Datei</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="px-2 py-2">
                       {nische.transporter_dropbox_url ? (
                         <a
                           href={nische.transporter_dropbox_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-primary hover:underline inline-flex items-center gap-1"
+                          className="text-primary hover:underline inline-flex items-center gap-1 text-xs"
                         >
                           <ExternalLink className="h-3 w-3" />
                           Link
                         </a>
                       ) : (
-                        <span className="text-sm text-muted-foreground">Kein Link</span>
+                        <span className="text-xs text-muted-foreground">Kein Link</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-2 py-2">
                       {nische.pkw_dropbox_url ? (
                         <a
                           href={nische.pkw_dropbox_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-primary hover:underline inline-flex items-center gap-1"
+                          className="text-primary hover:underline inline-flex items-center gap-1 text-xs"
                         >
                           <ExternalLink className="h-3 w-3" />
                           Link
                         </a>
                       ) : (
-                        <span className="text-sm text-muted-foreground">Kein Link</span>
+                        <span className="text-xs text-muted-foreground">Kein Link</span>
                       )}
                     </TableCell>
-                    <TableCell>
-                      {nische.kanzlei || (
-                        <span className="text-sm text-muted-foreground">Nicht angegeben</span>
-                      )}
+                    <TableCell className="px-2 py-2 whitespace-nowrap">
+                      <div className="max-w-24 truncate">
+                        {nische.kanzlei || (
+                          <span className="text-xs text-muted-foreground">Nicht angegeben</span>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-2 py-2 whitespace-nowrap text-xs">
                       {new Date(nische.created_at).toLocaleDateString("de-DE")}
                     </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteNische(nische.id)}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    <TableCell className="px-2 py-2">
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(nische)}
+                          className="h-7 w-7 p-0"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteNische(nische.id)}
+                          className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -445,6 +589,166 @@ export default function Nischen() {
           )}
         </CardContent>
       </Card>
+
+      {/* PDF Viewer Dialog */}
+      <Dialog open={isPdfOpen} onOpenChange={(open) => {
+        setIsPdfOpen(open);
+        if (!open) setPdfUrl(null);
+      }}>
+        <DialogContent className="max-w-4xl h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>PDF Vorschau</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0">
+            {pdfUrl && (
+              <iframe
+                src={pdfUrl}
+                className="w-full h-[80vh] border rounded"
+                title="PDF Vorschau"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Nische bearbeiten</DialogTitle>
+            <DialogDescription>
+              Bearbeiten Sie die Details der ausgewählten Nische.
+            </DialogDescription>
+          </DialogHeader>
+
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="nische"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nische</FormLabel>
+                      <FormControl>
+                        <Input placeholder="z.B. Metall" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="insolventes_unternehmen"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Insolventes Unternehmen</FormLabel>
+                      <FormControl>
+                        <Input placeholder="z.B. Müller GmbH" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="empfaenger"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Empfänger</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="z.B. 10000" 
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-bestandsliste">Bestandsliste ersetzen (PDF)</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="edit-bestandsliste"
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => setSelectedEditFile(e.target.files?.[0] || null)}
+                    className="flex-1"
+                  />
+                  <Upload className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Lassen Sie das Feld leer, um die aktuelle Datei zu behalten.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="transporter_dropbox_url"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Transporter Dropbox</FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://dropbox.com/..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="pkw_dropbox_url"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>PKW Dropbox</FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://dropbox.com/..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="kanzlei"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kanzlei</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Name der Kanzlei" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditDialogOpen(false)}
+                >
+                  Abbrechen
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? "Wird gespeichert..." : "Änderungen speichern"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
