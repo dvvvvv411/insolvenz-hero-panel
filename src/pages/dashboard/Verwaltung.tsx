@@ -14,7 +14,7 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Phone, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings, X } from "lucide-react";
+import { Plus, Phone, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings, X, Edit } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -154,6 +154,7 @@ export default function Verwaltung() {
   const [interessenten, setInteressenten] = useState<Interessent[]>([]);
   const [nischen, setNischen] = useState<string[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [isCallDialogOpen, setIsCallDialogOpen] = useState(false);
   const [isNotizDialogOpen, setIsNotizDialogOpen] = useState(false);
@@ -170,6 +171,7 @@ export default function Verwaltung() {
   const [isNischenDetailOpen, setIsNischenDetailOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedInteressent, setSelectedInteressent] = useState<Interessent | null>(null);
+  const [selectedInteressentForEdit, setSelectedInteressentForEdit] = useState<Interessent | null>(null);
   const [screenshotUrl, setScreenshotUrl] = useState("");
   const [isUrlUploadLoading, setIsUrlUploadLoading] = useState(false);
   const [uploadMethod, setUploadMethod] = useState<"file" | "url">("url");
@@ -198,6 +200,18 @@ export default function Verwaltung() {
   const { toast } = useToast();
 
   const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      unternehmensname: "",
+      ansprechpartner: "",
+      email: "",
+      telefonnummer: "",
+      mobilfunknummer: "",
+      nische: "",
+    },
+  });
+
+  const editForm = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       unternehmensname: "",
@@ -712,6 +726,89 @@ export default function Verwaltung() {
     }
   };
 
+  const openEditDialog = (interessent: Interessent) => {
+    setSelectedInteressentForEdit(interessent);
+    editForm.reset({
+      unternehmensname: interessent.unternehmensname,
+      ansprechpartner: interessent.ansprechpartner,
+      email: interessent.email,
+      telefonnummer: interessent.telefonnummer,
+      mobilfunknummer: interessent.mobilfunknummer || "",
+      nische: interessent.nische,
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const onSubmitEdit = async (data: FormData) => {
+    if (!selectedInteressentForEdit || !currentUser) return;
+
+    // Optimistic update - update UI immediately
+    setInteressenten(prev => 
+      prev.map(interessent => 
+        interessent.id === selectedInteressentForEdit.id 
+          ? { ...interessent, ...data }
+          : interessent
+      )
+    );
+
+    // Update database in background
+    try {
+      const { error } = await supabase
+        .from("interessenten")
+        .update({
+          unternehmensname: data.unternehmensname,
+          ansprechpartner: data.ansprechpartner,
+          email: data.email,
+          telefonnummer: data.telefonnummer,
+          mobilfunknummer: data.mobilfunknummer || null,
+          nische: data.nische,
+        })
+        .eq("id", selectedInteressentForEdit.id);
+
+      if (error) {
+        // Revert optimistic update on error
+        setInteressenten(prev => 
+          prev.map(interessent => 
+            interessent.id === selectedInteressentForEdit.id 
+              ? selectedInteressentForEdit
+              : interessent
+          )
+        );
+        
+        toast({
+          title: "Fehler",
+          description: "Interessent konnte nicht aktualisiert werden",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Erfolg",
+        description: "Interessent wurde erfolgreich aktualisiert",
+      });
+
+      setIsEditDialogOpen(false);
+      setSelectedInteressentForEdit(null);
+      editForm.reset();
+    } catch (error) {
+      // Revert optimistic update on error
+      setInteressenten(prev => 
+        prev.map(interessent => 
+          interessent.id === selectedInteressentForEdit.id 
+            ? selectedInteressentForEdit
+            : interessent
+        )
+      );
+      
+      toast({
+        title: "Fehler",
+        description: "Interessent konnte nicht aktualisiert werden",
+        variant: "destructive",
+      });
+    }
+  };
+
   const viewEmailScreenshot = async (screenshot: EmailVerlauf, inDetailsDialog = false) => {
     const { data, error } = await supabase.storage
       .from("email-screenshots")
@@ -1045,6 +1142,114 @@ export default function Verwaltung() {
               </Form>
             </DialogContent>
           </Dialog>
+
+          {/* Edit Dialog */}
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Interessent bearbeiten</DialogTitle>
+              </DialogHeader>
+              <Form {...editForm}>
+                <form onSubmit={editForm.handleSubmit(onSubmitEdit)} className="space-y-4">
+                  <FormField
+                    control={editForm.control}
+                    name="unternehmensname"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Unternehmensname</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="ansprechpartner"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Ansprechpartner</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>E-Mail</FormLabel>
+                        <FormControl>
+                          <Input type="email" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="telefonnummer"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telefonnummer</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="mobilfunknummer"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Mobilfunknummer (optional)</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="nische"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nische</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Nische auswählen" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {nischen.map((nische) => (
+                              <SelectItem key={nische} value={nische}>
+                                {nische}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                      Abbrechen
+                    </Button>
+                    <Button type="submit">Speichern</Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -1067,7 +1272,18 @@ export default function Verwaltung() {
               <TableRow key={interessent.id} className={interessent.call_notwendig === "Call notwendig" ? "bg-accent/50" : ""}>
                 <TableCell className="px-2 py-2">
                   <div className="space-y-1">
-                    <div className="font-medium">{interessent.unternehmensname}</div>
+                    <div className="font-medium flex items-center gap-2">
+                      {interessent.unternehmensname}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 hover:bg-accent"
+                        onClick={() => openEditDialog(interessent)}
+                        title="Interessent bearbeiten"
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                    </div>
                     <div className="text-sm text-muted-foreground">{interessent.ansprechpartner}</div>
                     <div className="text-sm text-muted-foreground">{interessent.email}</div>
                     <button 
