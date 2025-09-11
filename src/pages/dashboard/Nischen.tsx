@@ -38,6 +38,7 @@ import {
 
 const formSchema = z.object({
   nische: z.string().min(1, "Nische ist erforderlich"),
+  insolventes_unternehmen: z.string().optional(),
   empfaenger: z.number().min(1, "Empfänger muss mindestens 1 sein"),
   transporter_dropbox_url: z.string().url("Ungültige URL").optional().or(z.literal("")),
   pkw_dropbox_url: z.string().url("Ungültige URL").optional().or(z.literal("")),
@@ -49,6 +50,7 @@ type FormData = z.infer<typeof formSchema>;
 interface Nische {
   id: string;
   nische: string;
+  insolventes_unternehmen?: string;
   empfaenger: number;
   bestandsliste_path?: string;
   transporter_dropbox_url?: string;
@@ -69,6 +71,7 @@ export default function Nischen() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       nische: "",
+      insolventes_unternehmen: "",
       empfaenger: 1,
       transporter_dropbox_url: "",
       pkw_dropbox_url: "",
@@ -143,6 +146,7 @@ export default function Nischen() {
       const { error } = await supabase.from("nischen").insert({
         user_id: user.id,
         nische: data.nische,
+        insolventes_unternehmen: data.insolventes_unternehmen || null,
         empfaenger: data.empfaenger,
         bestandsliste_path,
         transporter_dropbox_url: data.transporter_dropbox_url || null,
@@ -229,6 +233,20 @@ export default function Nischen() {
                         <FormLabel>Nische</FormLabel>
                         <FormControl>
                           <Input placeholder="z.B. Metall" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="insolventes_unternehmen"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Insolventes Unternehmen</FormLabel>
+                        <FormControl>
+                          <Input placeholder="z.B. Müller GmbH" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

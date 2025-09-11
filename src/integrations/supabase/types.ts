@@ -20,6 +20,7 @@ export type Database = {
           created_at: string
           empfaenger: number
           id: string
+          insolventes_unternehmen: string | null
           kanzlei: string | null
           nische: string
           pkw_dropbox_url: string | null
@@ -32,6 +33,7 @@ export type Database = {
           created_at?: string
           empfaenger: number
           id?: string
+          insolventes_unternehmen?: string | null
           kanzlei?: string | null
           nische: string
           pkw_dropbox_url?: string | null
@@ -44,6 +46,7 @@ export type Database = {
           created_at?: string
           empfaenger?: number
           id?: string
+          insolventes_unternehmen?: string | null
           kanzlei?: string | null
           nische?: string
           pkw_dropbox_url?: string | null
