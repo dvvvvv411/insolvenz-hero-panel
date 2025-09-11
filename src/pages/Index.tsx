@@ -1,6 +1,19 @@
 import { Button } from "@/components/ui/button";
+import { Link, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 
 const Index = () => {
+  const navigate = useNavigate();
+  const { session, initialized } = useSupabaseAuth();
+
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    if (initialized && session) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [session, initialized, navigate]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex items-center justify-center relative overflow-hidden">
       {/* Subtle background glow */}
@@ -22,10 +35,11 @@ const Index = () => {
           
           <div className="pt-8">
             <Button 
+              asChild
               size="lg" 
               className="text-lg px-8 py-6 shadow-lg hover:shadow-xl transition-all duration-300"
             >
-              Zum Dashboard
+              <Link to="/auth">Jetzt starten</Link>
             </Button>
           </div>
         </div>
