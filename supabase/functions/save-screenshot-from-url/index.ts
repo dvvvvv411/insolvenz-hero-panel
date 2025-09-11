@@ -40,22 +40,119 @@ serve(async (req) => {
       throw new Error('Missing imageUrl or interessentId');
     }
 
-    console.log('Downloading image from URL:', imageUrl);
+    console.log('Downloading from URL:', imageUrl);
 
-    // Download the image from the URL
-    const imageResponse = await fetch(imageUrl, {
+    // First, try to fetch the URL to see what we get
+    const initialResponse = await fetch(imageUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8'
       }
     });
 
-    if (!imageResponse.ok) {
-      throw new Error(`Failed to download image: ${imageResponse.status} ${imageResponse.statusText}`);
+    if (!initialResponse.ok) {
+      throw new Error(`Failed to fetch URL: ${initialResponse.status} ${initialResponse.statusText}`);
     }
 
-    const contentType = imageResponse.headers.get('content-type');
-    if (!contentType || !contentType.startsWith('image/')) {
-      throw new Error('URL does not point to an image');
+    const contentType = initialResponse.headers.get('content-type');
+    let finalImageUrl = imageUrl;
+    let imageResponse = initialResponse;
+
+    // If we got HTML instead of an image, try to extract the image URL
+    if (contentType && contentType.includes('text/html')) {
+      console.log('Got HTML response, parsing for image URL...');
+      const htmlText = await initialResponse.text();
+      
+      // Try to extract image URL from HTML
+      let extractedImageUrl = null;
+      
+      // Look for meta tags first (og:image, twitter:image)
+      const ogImageMatch = htmlText.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
+      const twitterImageMatch = htmlText.match(/<meta[^>]*name="twitter:image"[^>]*content="([^"]+)"/i);
+      
+      if (ogImageMatch) {
+        extractedImageUrl = ogImageMatch[1];
+        console.log('Found og:image:', extractedImageUrl);
+      } else if (twitterImageMatch) {
+        extractedImageUrl = twitterImageMatch[1];
+        console.log('Found twitter:image:', extractedImageUrl);
+      } else {
+        // Look for prominent img tags
+        const imgMatches = htmlText.match(/<img[^>]*src="([^"]+)"[^>]*>/gi);
+        if (imgMatches) {
+          // Look for specific IDs or classes that suggest it's the main image
+          for (const imgTag of imgMatches) {
+            const srcMatch = imgTag.match(/src="([^"]+)"/i);
+            if (srcMatch) {
+              const src = srcMatch[1];
+              // Check for common screenshot/image IDs
+              if (imgTag.includes('id="screenshot-image"') || 
+                  imgTag.includes('class="screenshot"') ||
+                  imgTag.includes('lightshot') ||
+                  src.includes('prntscr.com') ||
+                  src.includes('lightshot')) {
+                extractedImageUrl = src;
+                console.log('Found prominent image:', extractedImageUrl);
+                break;
+              }
+            }
+          }
+          
+          // If no specific image found, try the first img with a reasonable src
+          if (!extractedImageUrl && imgMatches.length > 0) {
+            const firstImgMatch = imgMatches[0].match(/src="([^"]+)"/i);
+            if (firstImgMatch) {
+              const src = firstImgMatch[1];
+              // Skip very small images, base64, or obvious UI elements
+              if (!src.startsWith('data:') && 
+                  !src.includes('icon') && 
+                  !src.includes('logo') &&
+                  !src.includes('button')) {
+                extractedImageUrl = src;
+                console.log('Using first reasonable image:', extractedImageUrl);
+              }
+            }
+          }
+        }
+      }
+
+      if (!extractedImageUrl) {
+        throw new Error('No image found in the HTML page');
+      }
+
+      // Convert relative URLs to absolute
+      if (extractedImageUrl.startsWith('//')) {
+        extractedImageUrl = 'https:' + extractedImageUrl;
+      } else if (extractedImageUrl.startsWith('/')) {
+        const urlObj = new URL(imageUrl);
+        extractedImageUrl = urlObj.origin + extractedImageUrl;
+      } else if (!extractedImageUrl.startsWith('http')) {
+        const urlObj = new URL(imageUrl);
+        extractedImageUrl = urlObj.origin + '/' + extractedImageUrl;
+      }
+
+      console.log('Final extracted image URL:', extractedImageUrl);
+      finalImageUrl = extractedImageUrl;
+
+      // Now fetch the actual image
+      imageResponse = await fetch(extractedImageUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Referer': imageUrl,
+          'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8'
+        }
+      });
+
+      if (!imageResponse.ok) {
+        throw new Error(`Failed to download extracted image: ${imageResponse.status} ${imageResponse.statusText}`);
+      }
+
+      const imageContentType = imageResponse.headers.get('content-type');
+      if (!imageContentType || !imageContentType.startsWith('image/')) {
+        throw new Error('Extracted URL does not point to an image');
+      }
+    } else if (!contentType || !contentType.startsWith('image/')) {
+      throw new Error('URL does not point to an image or HTML page');
     }
 
     const imageBuffer = await imageResponse.arrayBuffer();
