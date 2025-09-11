@@ -13,7 +13,8 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Phone, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy } from "lucide-react";
+import { Plus, Phone, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings } from "lucide-react";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -75,26 +76,39 @@ interface NischenDetails {
   created_at: string;
 }
 
-const statusOptions = [
-  "Mail raus",
-  "KV versendet", 
-  "Möchte KV",
-  "Möchte Rechnung",
-  "Rechnung versendet",
-  "Überwiesen",
+// Default status order
+const defaultStatusOrder = [
   "Exchanged",
-  "Kein Interesse"
+  "Überwiesen", 
+  "Rechnung versendet",
+  "Möchte Rechnung",
+  "KV versendet",
+  "Möchte KV",
+  "Mail raus",
+  "Neu"
 ];
 
-const statusOrder = {
-  "Exchanged": 1,
-  "Überwiesen": 2,
-  "Rechnung versendet": 3,
-  "Möchte Rechnung": 4,
-  "KV versendet": 5,
-  "Möchte KV": 6,
-  "Mail raus": 7,
-  "Kein Interesse": 8
+// Get status order from localStorage or use default
+const getStatusOrder = () => {
+  const saved = localStorage.getItem('statusOrder');
+  return saved ? JSON.parse(saved) : defaultStatusOrder;
+};
+
+// Status options (excluding "Kein Interesse" which is separate)
+const getStatusOptions = () => {
+  const order = getStatusOrder();
+  return [...order, "Kein Interesse"];
+};
+
+// Create status order map for sorting
+const getStatusOrderMap = () => {
+  const order = getStatusOrder();
+  const orderMap: Record<string, number> = {};
+  order.forEach((status, index) => {
+    orderMap[status] = index + 1;
+  });
+  orderMap["Kein Interesse"] = 999; // Always last
+  return orderMap;
 };
 
 const callOptions = [
@@ -138,6 +152,8 @@ export default function Verwaltung() {
   const [loading, setLoading] = useState(true);
   const [isPdfViewerOpen, setIsPdfViewerOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [isStatusReorderOpen, setIsStatusReorderOpen] = useState(false);
+  const [statusOrder, setStatusOrder] = useState(getStatusOrder());
   const { toast } = useToast();
 
   const form = useForm<FormData>({
@@ -618,6 +634,22 @@ export default function Verwaltung() {
     fetchInteressenten();
   };
 
+  const saveStatusOrder = (newOrder: string[]) => {
+    localStorage.setItem('statusOrder', JSON.stringify(newOrder));
+    setStatusOrder(newOrder);
+    fetchInteressenten(); // Refresh to apply new sorting
+  };
+
+  const handleDragEnd = (result: any) => {
+    if (!result.destination) return;
+
+    const items = [...statusOrder];
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    saveStatusOrder(items);
+  };
+
   const getSortedInteressenten = () => {
     const filtered = showHidden 
       ? interessenten 
@@ -980,11 +1012,26 @@ export default function Verwaltung() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {statusOptions.map((status) => (
+                      {getStatusOptions().map((status) => (
                         <SelectItem key={status} value={status}>
                           {status}
                         </SelectItem>
                       ))}
+                      <div className="border-t p-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full text-primary border-primary hover:bg-primary hover:text-primary-foreground"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setIsStatusReorderOpen(true);
+                          }}
+                        >
+                          <Settings className="w-3 h-3 mr-1" />
+                          Reihenfolge ändern
+                        </Button>
+                      </div>
                     </SelectContent>
                   </Select>
                 </TableCell>
@@ -1414,6 +1461,55 @@ export default function Verwaltung() {
               />
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Status Reorder Dialog */}
+      <Dialog open={isStatusReorderOpen} onOpenChange={setIsStatusReorderOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Status-Reihenfolge ändern</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Ziehen Sie die Status-Einträge, um die Reihenfolge zu ändern:
+            </p>
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId="status-list">
+                {(provided) => (
+                  <div
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    className="space-y-2"
+                  >
+                    {statusOrder.map((status, index) => (
+                      <Draggable key={status} draggableId={status} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            className={`flex items-center gap-2 p-3 border rounded-md bg-background cursor-move ${
+                              snapshot.isDragging ? 'shadow-lg border-primary' : ''
+                            }`}
+                          >
+                            <GripVertical className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-medium">{status}</span>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setIsStatusReorderOpen(false)}>
+                Schließen
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
