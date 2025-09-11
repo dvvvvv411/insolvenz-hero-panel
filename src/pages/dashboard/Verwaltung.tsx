@@ -95,6 +95,38 @@ const getStatusOrder = () => {
   return saved ? JSON.parse(saved) : defaultStatusOrder;
 };
 
+// Get status colors from localStorage
+const getStatusColors = () => {
+  const saved = localStorage.getItem('statusColors');
+  return saved ? JSON.parse(saved) : {};
+};
+
+// Save status colors to localStorage
+const saveStatusColors = (colors: Record<string, string>) => {
+  localStorage.setItem('statusColors', JSON.stringify(colors));
+};
+
+// Set color for a specific status
+const setStatusColor = (status: string, color: string) => {
+  const colors = getStatusColors();
+  colors[status] = color;
+  saveStatusColors(colors);
+};
+
+// Get contrasting text color (white or black) based on background
+const getContrastingTextColor = (hexColor: string): string => {
+  // Convert hex to RGB
+  const r = parseInt(hexColor.slice(1, 3), 16);
+  const g = parseInt(hexColor.slice(3, 5), 16);
+  const b = parseInt(hexColor.slice(5, 7), 16);
+  
+  // Calculate luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  
+  // Return white for dark colors, black for light colors
+  return luminance > 0.5 ? '#000000' : '#ffffff';
+};
+
 // Status options (excluding "Kein Interesse" which is separate)
 const getStatusOptions = () => {
   const order = getStatusOrder();
@@ -161,6 +193,7 @@ export default function Verwaltung() {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isStatusReorderOpen, setIsStatusReorderOpen] = useState(false);
   const [statusOrder, setStatusOrder] = useState(getStatusOrder());
+  const [statusColors, setStatusColors] = useState(getStatusColors());
   const [newStatusName, setNewStatusName] = useState("");
   const { toast } = useToast();
 
@@ -738,6 +771,12 @@ export default function Verwaltung() {
     const newOrder = statusOrder.filter(status => status !== statusToDelete);
     saveStatusOrder(newOrder);
     
+    // Also remove the color for this status
+    const newColors = { ...statusColors };
+    delete newColors[statusToDelete];
+    setStatusColors(newColors);
+    saveStatusColors(newColors);
+    
     toast({
       title: "Erfolg",
       description: `Status "${statusToDelete}" wurde gelöscht.`,
@@ -1147,14 +1186,21 @@ export default function Verwaltung() {
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="px-2 py-2">
-                  <Select
-                    value={interessent.status}
-                    onValueChange={(value) => updateStatus(interessent.id, value)}
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
+                 <TableCell className="px-2 py-2">
+                   <Select
+                     value={interessent.status}
+                     onValueChange={(value) => updateStatus(interessent.id, value)}
+                   >
+                     <SelectTrigger 
+                       className="h-8 text-xs"
+                       style={statusColors[interessent.status] ? {
+                         backgroundColor: statusColors[interessent.status],
+                         color: getContrastingTextColor(statusColors[interessent.status]),
+                         borderColor: statusColors[interessent.status]
+                       } : {}}
+                     >
+                       <SelectValue />
+                     </SelectTrigger>
                     <SelectContent>
                       {getStatusOptions().map((status) => (
                         <SelectItem key={status} value={status}>
@@ -1166,11 +1212,12 @@ export default function Verwaltung() {
                           variant="outline" 
                           size="sm" 
                           className="w-full text-primary border-primary hover:bg-primary hover:text-primary-foreground"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setIsStatusReorderOpen(true);
-                          }}
+                           onClick={(e) => {
+                             e.preventDefault();
+                             e.stopPropagation();
+                             setStatusColors(getStatusColors()); // Reload colors from localStorage
+                             setIsStatusReorderOpen(true);
+                           }}
                         >
                           <Settings className="w-3 h-3 mr-1" />
                           Reihenfolge ändern
@@ -1941,39 +1988,68 @@ export default function Verwaltung() {
                       const canDelete = usageCount === 0;
                       
                       return (
-                        <Draggable key={status} draggableId={status} index={index}>
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              className={`flex items-center gap-2 p-3 border rounded-md bg-background ${
-                                snapshot.isDragging ? 'shadow-lg border-primary' : ''
-                              }`}
-                            >
-                              <div 
-                                {...provided.dragHandleProps}
-                                className="cursor-move"
-                              >
-                                <GripVertical className="w-4 h-4 text-muted-foreground" />
-                              </div>
-                              <span className="font-medium flex-1">{status}</span>
-                              {usageCount > 0 && (
-                                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                                  {usageCount}
-                                </span>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className={`h-8 w-8 p-0 ${!canDelete ? 'opacity-50 cursor-not-allowed' : 'hover:bg-destructive hover:text-destructive-foreground'}`}
-                                onClick={() => canDelete && deleteStatus(status)}
-                                disabled={!canDelete}
-                                title={canDelete ? `Status "${status}" löschen` : `Status wird von ${usageCount} Interessent${usageCount > 1 ? 'en' : ''} verwendet`}
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          )}
+                         <Draggable key={status} draggableId={status} index={index}>
+                           {(provided, snapshot) => (
+                             <div
+                               ref={provided.innerRef}
+                               {...provided.draggableProps}
+                               className={`flex items-center gap-2 p-3 border rounded-md bg-background ${
+                                 snapshot.isDragging ? 'shadow-lg border-primary' : ''
+                               }`}
+                             >
+                               <div 
+                                 {...provided.dragHandleProps}
+                                 className="cursor-move"
+                               >
+                                 <GripVertical className="w-4 h-4 text-muted-foreground" />
+                               </div>
+                               <span className="font-medium flex-1">{status}</span>
+                               <div className="flex items-center gap-2">
+                                 <input
+                                   type="color"
+                                   value={statusColors[status] || "#ffffff"}
+                                   onChange={(e) => {
+                                     const newColors = { ...statusColors, [status]: e.target.value };
+                                     setStatusColors(newColors);
+                                     setStatusColor(status, e.target.value);
+                                   }}
+                                   className="w-8 h-8 rounded border cursor-pointer"
+                                   title="Farbe für diesen Status wählen"
+                                 />
+                                 {statusColors[status] && (
+                                   <Button
+                                     variant="ghost"
+                                     size="sm"
+                                     className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                                     onClick={() => {
+                                       const newColors = { ...statusColors };
+                                       delete newColors[status];
+                                       setStatusColors(newColors);
+                                       saveStatusColors(newColors);
+                                     }}
+                                     title="Farbe entfernen"
+                                   >
+                                     <X className="w-3 h-3" />
+                                   </Button>
+                                 )}
+                               </div>
+                               {usageCount > 0 && (
+                                 <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                                   {usageCount}
+                                 </span>
+                               )}
+                               <Button
+                                 variant="ghost"
+                                 size="sm"
+                                 className={`h-8 w-8 p-0 ${!canDelete ? 'opacity-50 cursor-not-allowed' : 'hover:bg-destructive hover:text-destructive-foreground'}`}
+                                 onClick={() => canDelete && deleteStatus(status)}
+                                 disabled={!canDelete}
+                                 title={canDelete ? `Status "${status}" löschen` : `Status wird von ${usageCount} Interessent${usageCount > 1 ? 'en' : ''} verwendet`}
+                               >
+                                 <X className="w-4 h-4" />
+                               </Button>
+                             </div>
+                           )}
                         </Draggable>
                       );
                     })}
