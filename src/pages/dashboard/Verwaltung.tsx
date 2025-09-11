@@ -918,8 +918,8 @@ export default function Verwaltung() {
         <Table className="text-sm">
           <TableHeader>
             <TableRow>
-              <TableHead className="px-2 py-2 whitespace-nowrap">Kontakt</TableHead>
-              <TableHead className="px-2 py-2 whitespace-nowrap">Nische</TableHead>
+              <TableHead className="px-2 py-2 w-40">Kontakt</TableHead>
+              <TableHead className="px-2 py-2 w-24">Nische</TableHead>
               <TableHead className="px-2 py-2 w-40">Email-Verlauf</TableHead>
               <TableHead className="px-2 py-2 w-32">Call-Verlauf</TableHead>
               <TableHead className="px-2 py-2 w-32">Notizen</TableHead>
@@ -931,7 +931,7 @@ export default function Verwaltung() {
           <TableBody>
             {getSortedInteressenten().map((interessent) => (
               <TableRow key={interessent.id} className={interessent.call_notwendig === "Call notwendig" ? "bg-accent/50" : ""}>
-                <TableCell className="px-2 py-2 whitespace-nowrap">
+                <TableCell className="px-2 py-2">
                   <div className="space-y-1">
                     <div className="font-medium">{interessent.unternehmensname}</div>
                     <div className="text-sm text-muted-foreground">{interessent.ansprechpartner}</div>
