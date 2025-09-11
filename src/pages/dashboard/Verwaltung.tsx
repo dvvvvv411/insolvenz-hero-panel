@@ -13,7 +13,8 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Phone, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings, X } from "lucide-react";
+import { Plus, Phone, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -927,56 +928,72 @@ export default function Verwaltung() {
                   </div>
                 </TableCell>
                 <TableCell className="px-2 py-2">
-                  <div className="flex gap-1 flex-wrap">
-                     {emailVerlauf[interessent.id]?.map((email, index) => (
-                       <div key={email.id} className="relative">
-                         <button
-                           className="w-16 h-28 border border-border rounded overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer"
-                           onClick={() => viewEmailScreenshot(email)}
-                         >
-                           {thumbnailUrls[email.id] ? (
-                             <img 
-                               src={thumbnailUrls[email.id]} 
-                               alt={`Screenshot ${index + 1}`}
-                               className="w-full h-full object-cover"
-                             />
-                           ) : (
-                             <div className="w-full h-full bg-muted flex items-center justify-center">
-                               <Eye className="w-4 h-4 text-muted-foreground" />
-                             </div>
-                           )}
-                         </button>
-                         <TooltipProvider>
-                           <Tooltip>
-                             <TooltipTrigger asChild>
-                                 <button
-                                   className="absolute top-1 right-1 w-8 h-8 bg-background/80 rounded-full flex items-center justify-center hover:bg-background transition-colors"
-                                   onClick={(e) => e.stopPropagation()}
-                                 >
-                                   <Info className="w-6 h-6 text-muted-foreground" />
-                                 </button>
-                             </TooltipTrigger>
-                             <TooltipContent>
-                               <p>Hinzugefügt am {format(new Date(email.created_at), "dd.MM.yyyy, HH:mm", { locale: de })}</p>
-                             </TooltipContent>
-                           </Tooltip>
-                         </TooltipProvider>
-                       </div>
-                     ))}
-                     <Button
-                       variant="outline"
-                       size="sm"
-                       className="h-8 px-2"
-                        onClick={() => {
-                          setSelectedInteressent(interessent);
-                          setUploadMethod("url");
-                          setIsEmailDialogOpen(true);
-                        }}
-                     >
-                       <Plus className="w-3 h-3" />
-                     </Button>
-                  </div>
-                </TableCell>
+                   <div className="flex items-center gap-2">
+                      {emailVerlauf[interessent.id]?.length > 0 ? (
+                        <div className="w-20">
+                          <Carousel className="w-full">
+                            <CarouselContent>
+                              {emailVerlauf[interessent.id]?.map((email, index) => (
+                                <CarouselItem key={email.id} className="basis-full">
+                                  <div className="relative">
+                                    <button
+                                      className="w-16 h-28 border border-border rounded overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer"
+                                      onClick={() => viewEmailScreenshot(email)}
+                                    >
+                                      {thumbnailUrls[email.id] ? (
+                                        <img 
+                                          src={thumbnailUrls[email.id]} 
+                                          alt={`Screenshot ${index + 1}`}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full bg-muted flex items-center justify-center">
+                                          <Eye className="w-4 h-4 text-muted-foreground" />
+                                        </div>
+                                      )}
+                                    </button>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <button
+                                              className="absolute top-1 right-1 w-8 h-8 bg-background/80 rounded-full flex items-center justify-center hover:bg-background transition-colors"
+                                              onClick={(e) => e.stopPropagation()}
+                                            >
+                                              <Info className="w-6 h-6 text-muted-foreground" />
+                                            </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Hinzugefügt am {format(new Date(email.created_at), "dd.MM.yyyy, HH:mm", { locale: de })}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  </div>
+                                </CarouselItem>
+                              ))}
+                            </CarouselContent>
+                            {emailVerlauf[interessent.id]?.length > 1 && (
+                              <>
+                                <CarouselPrevious className="h-6 w-6 -left-2" />
+                                <CarouselNext className="h-6 w-6 -right-2" />
+                              </>
+                            )}
+                          </Carousel>
+                        </div>
+                      ) : null}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-2"
+                         onClick={() => {
+                           setSelectedInteressent(interessent);
+                           setUploadMethod("url");
+                           setIsEmailDialogOpen(true);
+                         }}
+                      >
+                        <Plus className="w-3 h-3" />
+                      </Button>
+                   </div>
+                 </TableCell>
                 <TableCell className="px-2 py-2">
                   <div className="flex flex-wrap gap-1">
                      {callVerlauf[interessent.id]?.map((call, index) => (
