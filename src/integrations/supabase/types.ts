@@ -14,7 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      nischen: {
+        Row: {
+          bestandsliste_path: string | null
+          created_at: string
+          empfaenger: number
+          id: string
+          kanzlei: string | null
+          nische: string
+          pkw_dropbox_url: string | null
+          transporter_dropbox_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bestandsliste_path?: string | null
+          created_at?: string
+          empfaenger: number
+          id?: string
+          kanzlei?: string | null
+          nische: string
+          pkw_dropbox_url?: string | null
+          transporter_dropbox_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bestandsliste_path?: string | null
+          created_at?: string
+          empfaenger?: number
+          id?: string
+          kanzlei?: string | null
+          nische?: string
+          pkw_dropbox_url?: string | null
+          transporter_dropbox_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
