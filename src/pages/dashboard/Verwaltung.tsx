@@ -594,44 +594,122 @@ export default function Verwaltung() {
   };
 
   const updateStatus = async (interessentId: string, newStatus: string) => {
-    const { error } = await supabase
-      .from("interessenten")
-      .update({ status: newStatus })
-      .eq("id", interessentId);
+    // Optimistic update - update UI immediately
+    setInteressenten(prev => 
+      prev.map(interessent => 
+        interessent.id === interessentId 
+          ? { ...interessent, status: newStatus }
+          : interessent
+      )
+    );
 
-    if (error) {
+    // Update database in background
+    try {
+      const { error } = await supabase
+        .from("interessenten")
+        .update({ status: newStatus })
+        .eq("id", interessentId);
+
+      if (error) {
+        // Revert optimistic update on error
+        setInteressenten(prev => 
+          prev.map(interessent => 
+            interessent.id === interessentId 
+              ? { ...interessent, status: interessenten.find(i => i.id === interessentId)?.status || interessent.status }
+              : interessent
+          )
+        );
+        
+        toast({
+          title: "Fehler",
+          description: "Status konnte nicht aktualisiert werden",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      // Revert optimistic update on error
+      setInteressenten(prev => 
+        prev.map(interessent => 
+          interessent.id === interessentId 
+            ? { ...interessent, status: interessenten.find(i => i.id === interessentId)?.status || interessent.status }
+            : interessent
+        )
+      );
+      
       toast({
         title: "Fehler",
         description: "Status konnte nicht aktualisiert werden",
         variant: "destructive",
       });
-      return;
     }
-
-    fetchInteressenten(currentUser);
   };
 
   const updateCallNotwendig = async (interessentId: string, callStatus: string, grund?: string) => {
-    const { error } = await supabase
-      .from("interessenten")
-      .update({ 
-        call_notwendig: callStatus,
-        call_notwendig_grund: grund
-      })
-      .eq("id", interessentId);
+    // Optimistic update - update UI immediately
+    setInteressenten(prev => 
+      prev.map(interessent => 
+        interessent.id === interessentId 
+          ? { ...interessent, call_notwendig: callStatus, call_notwendig_grund: grund }
+          : interessent
+      )
+    );
 
-    if (error) {
+    // Update database in background
+    try {
+      const { error } = await supabase
+        .from("interessenten")
+        .update({ 
+          call_notwendig: callStatus,
+          call_notwendig_grund: grund
+        })
+        .eq("id", interessentId);
+
+      if (error) {
+        // Revert optimistic update on error
+        const originalInteressent = interessenten.find(i => i.id === interessentId);
+        setInteressenten(prev => 
+          prev.map(interessent => 
+            interessent.id === interessentId 
+              ? { 
+                  ...interessent, 
+                  call_notwendig: originalInteressent?.call_notwendig || interessent.call_notwendig,
+                  call_notwendig_grund: originalInteressent?.call_notwendig_grund || interessent.call_notwendig_grund
+                }
+              : interessent
+          )
+        );
+        
+        toast({
+          title: "Fehler",
+          description: "Call-Status konnte nicht aktualisiert werden",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setIsCallGrundDialogOpen(false);
+      setCallGrund("");
+    } catch (error) {
+      // Revert optimistic update on error
+      const originalInteressent = interessenten.find(i => i.id === interessentId);
+      setInteressenten(prev => 
+        prev.map(interessent => 
+          interessent.id === interessentId 
+            ? { 
+                ...interessent, 
+                call_notwendig: originalInteressent?.call_notwendig || interessent.call_notwendig,
+                call_notwendig_grund: originalInteressent?.call_notwendig_grund || interessent.call_notwendig_grund
+              }
+            : interessent
+        )
+      );
+      
       toast({
         title: "Fehler",
         description: "Call-Status konnte nicht aktualisiert werden",
         variant: "destructive",
       });
-      return;
     }
-
-    setIsCallGrundDialogOpen(false);
-    setCallGrund("");
-    fetchInteressenten(currentUser);
   };
 
   const viewEmailScreenshot = async (screenshot: EmailVerlauf, inDetailsDialog = false) => {
