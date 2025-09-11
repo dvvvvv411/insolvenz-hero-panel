@@ -727,7 +727,7 @@ export default function Verwaltung() {
                 </TableCell>
                 <TableCell className="px-2 py-2 whitespace-nowrap">{interessent.nische}</TableCell>
                 <TableCell className="px-2 py-2">
-                  <div className="flex flex-col gap-1">
+                  <div className="flex gap-1 flex-wrap">
                     {emailVerlauf[interessent.id]?.map((email, index) => (
                       <button
                         key={email.id}
