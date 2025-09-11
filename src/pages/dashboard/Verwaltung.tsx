@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -105,6 +105,9 @@ export default function Verwaltung() {
   const [selectedInteressent, setSelectedInteressent] = useState<Interessent | null>(null);
   const [screenshotUrl, setScreenshotUrl] = useState("");
   const [isUrlUploadLoading, setIsUrlUploadLoading] = useState(false);
+  const [uploadMethod, setUploadMethod] = useState<"file" | "url">("file");
+  const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({});
+  const [currentViewingScreenshot, setCurrentViewingScreenshot] = useState<EmailVerlauf | null>(null);
   const [callNotiz, setCallNotiz] = useState("");
   const [notizText, setNotizText] = useState("");
   const [callGrund, setCallGrund] = useState("");
@@ -186,11 +189,30 @@ export default function Verwaltung() {
       .eq("user_id", user.user.id);
 
     const emailMap: Record<string, EmailVerlauf[]> = {};
+    const thumbnails: Record<string, string> = {};
+    
     emailData?.forEach(item => {
       if (!emailMap[item.interessent_id]) emailMap[item.interessent_id] = [];
       emailMap[item.interessent_id].push(item);
     });
     setEmailVerlauf(emailMap);
+
+    // Generate thumbnail URLs
+    if (emailData) {
+      for (const item of emailData) {
+        try {
+          const { data } = await supabase.storage
+            .from("email-screenshots")
+            .createSignedUrl(item.screenshot_path, 600);
+          if (data) {
+            thumbnails[item.id] = data.signedUrl;
+          }
+        } catch (error) {
+          console.error('Error creating thumbnail URL:', error);
+        }
+      }
+    }
+    setThumbnailUrls(thumbnails);
 
     // Fetch call verlauf
     const { data: callData } = await supabase
@@ -250,52 +272,57 @@ export default function Verwaltung() {
   };
 
   const uploadEmailScreenshot = async () => {
-    if (!selectedFile || !selectedInteressent) return;
+    if (uploadMethod === "file" && (!selectedFile || !selectedInteressent)) return;
+    if (uploadMethod === "url" && (!screenshotUrl || !selectedInteressent)) return;
 
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return;
+    if (uploadMethod === "file") {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return;
 
-    const fileExt = selectedFile.name.split('.').pop();
-    const fileName = `${user.user.id}/${Date.now()}.${fileExt}`;
+      const fileExt = selectedFile!.name.split('.').pop();
+      const fileName = `${user.user.id}/${Date.now()}.${fileExt}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from("email-screenshots")
-      .upload(fileName, selectedFile);
+      const { error: uploadError } = await supabase.storage
+        .from("email-screenshots")
+        .upload(fileName, selectedFile!);
 
-    if (uploadError) {
+      if (uploadError) {
+        toast({
+          title: "Fehler",
+          description: "Screenshot konnte nicht hochgeladen werden",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error: dbError } = await supabase
+        .from("interessenten_email_verlauf")
+        .insert({
+          interessent_id: selectedInteressent.id,
+          user_id: user.user.id,
+          screenshot_path: fileName,
+        });
+
+      if (dbError) {
+        toast({
+          title: "Fehler",
+          description: "Email-Verlauf konnte nicht gespeichert werden",
+          variant: "destructive",
+        });
+        return;
+      }
+
       toast({
-        title: "Fehler",
-        description: "Screenshot konnte nicht hochgeladen werden",
-        variant: "destructive",
+        title: "Erfolg",
+        description: "Email-Screenshot wurde hinzugefügt",
       });
-      return;
+
+      setIsEmailDialogOpen(false);
+      setSelectedFile(null);
+      fetchInteressenten();
+    } else {
+      await saveScreenshotFromUrl();
     }
-
-    const { error: dbError } = await supabase
-      .from("interessenten_email_verlauf")
-      .insert({
-        interessent_id: selectedInteressent.id,
-        user_id: user.user.id,
-        screenshot_path: fileName,
-      });
-
-    if (dbError) {
-      toast({
-        title: "Fehler",
-        description: "Email-Verlauf konnte nicht gespeichert werden",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    toast({
-      title: "Erfolg",
-      description: "Email-Screenshot wurde hinzugefügt",
-    });
-
-    setIsEmailDialogOpen(false);
-    setSelectedFile(null);
-    fetchInteressenten();
   };
 
   const saveScreenshotFromUrl = async () => {
@@ -448,10 +475,10 @@ export default function Verwaltung() {
     fetchInteressenten();
   };
 
-  const viewEmailScreenshot = async (path: string) => {
+  const viewEmailScreenshot = async (screenshot: EmailVerlauf) => {
     const { data, error } = await supabase.storage
       .from("email-screenshots")
-      .createSignedUrl(path, 600);
+      .createSignedUrl(screenshot.screenshot_path, 600);
 
     if (error || !data) {
       toast({
@@ -463,7 +490,52 @@ export default function Verwaltung() {
     }
 
     setViewImageUrl(data.signedUrl);
+    setCurrentViewingScreenshot(screenshot);
     setIsImageViewerOpen(true);
+  };
+
+  const deleteEmailScreenshot = async (screenshot: EmailVerlauf) => {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) return;
+
+    // Delete from storage
+    const { error: storageError } = await supabase.storage
+      .from("email-screenshots")
+      .remove([screenshot.screenshot_path]);
+
+    if (storageError) {
+      toast({
+        title: "Fehler",
+        description: "Screenshot konnte nicht aus dem Speicher gelöscht werden",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Delete from database
+    const { error: dbError } = await supabase
+      .from("interessenten_email_verlauf")
+      .delete()
+      .eq("id", screenshot.id)
+      .eq("user_id", user.user.id);
+
+    if (dbError) {
+      toast({
+        title: "Fehler",
+        description: "Screenshot konnte nicht aus der Datenbank gelöscht werden",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Erfolg",
+      description: "Screenshot wurde gelöscht",
+    });
+
+    setIsImageViewerOpen(false);
+    setCurrentViewingScreenshot(null);
+    fetchInteressenten();
   };
 
   const getSortedInteressenten = () => {
@@ -657,15 +729,23 @@ export default function Verwaltung() {
                 <TableCell className="px-2 py-2">
                   <div className="flex flex-wrap gap-1">
                     {emailVerlauf[interessent.id]?.map((email, index) => (
-                      <Button
+                      <button
                         key={email.id}
-                        variant="outline"
-                        size="sm"
-                        className="h-8 px-2"
-                        onClick={() => viewEmailScreenshot(email.screenshot_path)}
+                        className="w-8 h-8 border border-border rounded overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer"
+                        onClick={() => viewEmailScreenshot(email)}
                       >
-                        <Eye className="w-3 h-3" />
-                      </Button>
+                        {thumbnailUrls[email.id] ? (
+                          <img 
+                            src={thumbnailUrls[email.id]} 
+                            alt={`Screenshot ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-muted flex items-center justify-center">
+                            <Eye className="w-3 h-3 text-muted-foreground" />
+                          </div>
+                        )}
+                      </button>
                     ))}
                     <Button
                       variant="outline"
@@ -673,6 +753,7 @@ export default function Verwaltung() {
                       className="h-8 px-2"
                       onClick={() => {
                         setSelectedInteressent(interessent);
+                        setUploadMethod("file");
                         setIsEmailDialogOpen(true);
                       }}
                     >
@@ -811,12 +892,19 @@ export default function Verwaltung() {
           <DialogHeader>
             <DialogTitle>Email-Screenshot hinzufügen</DialogTitle>
           </DialogHeader>
-          <Tabs defaultValue="file" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="file">Datei hochladen</TabsTrigger>
-              <TabsTrigger value="url">Von URL</TabsTrigger>
-            </TabsList>
-            <TabsContent value="file" className="space-y-4">
+          <div className="space-y-4">
+            <RadioGroup value={uploadMethod} onValueChange={(value: "file" | "url") => setUploadMethod(value)}>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="file" id="file" />
+                <Label htmlFor="file">Datei hochladen</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="url" id="url" />
+                <Label htmlFor="url">Von URL</Label>
+              </div>
+            </RadioGroup>
+
+            {uploadMethod === "file" && (
               <div>
                 <Label htmlFor="email-file">Screenshot auswählen</Label>
                 <Input
@@ -826,39 +914,36 @@ export default function Verwaltung() {
                   onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                 />
               </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsEmailDialogOpen(false)}>
-                  Abbrechen
-                </Button>
-                <Button onClick={uploadEmailScreenshot} disabled={!selectedFile}>
-                  Hochladen
-                </Button>
-              </div>
-            </TabsContent>
-            <TabsContent value="url" className="space-y-4">
+            )}
+
+            {uploadMethod === "url" && (
               <div>
                 <Label htmlFor="screenshot-url">Screenshot URL</Label>
                 <Input
                   id="screenshot-url"
                   type="url"
-                  placeholder="https://example.com/screenshot.png"
+                  placeholder="https://prnt.sc/... oder https://example.com/screenshot.png"
                   value={screenshotUrl}
                   onChange={(e) => setScreenshotUrl(e.target.value)}
                 />
               </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsEmailDialogOpen(false)}>
-                  Abbrechen
-                </Button>
-                <Button 
-                  onClick={saveScreenshotFromUrl} 
-                  disabled={!screenshotUrl || isUrlUploadLoading}
-                >
-                  {isUrlUploadLoading ? "Lädt..." : "Speichern"}
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsEmailDialogOpen(false)}>
+                Abbrechen
+              </Button>
+              <Button 
+                onClick={uploadEmailScreenshot} 
+                disabled={
+                  (uploadMethod === "file" && !selectedFile) || 
+                  (uploadMethod === "url" && (!screenshotUrl || isUrlUploadLoading))
+                }
+              >
+                {isUrlUploadLoading ? "Lädt..." : "Hochladen"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -956,7 +1041,19 @@ export default function Verwaltung() {
       <Dialog open={isImageViewerOpen} onOpenChange={setIsImageViewerOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Email-Screenshot</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Email-Screenshot</DialogTitle>
+              {currentViewingScreenshot && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => deleteEmailScreenshot(currentViewingScreenshot)}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Löschen
+                </Button>
+              )}
+            </div>
           </DialogHeader>
           {viewImageUrl && (
             <div className="w-full">
