@@ -655,15 +655,16 @@ export default function Verwaltung() {
       ? interessenten 
       : interessenten.filter(i => i.status !== "Kein Interesse");
 
+    const statusOrderMap = getStatusOrderMap();
+
     return filtered.sort((a, b) => {
       // Call notwendig has highest priority
       if (a.call_notwendig === "Call notwendig" && b.call_notwendig !== "Call notwendig") return -1;
       if (b.call_notwendig === "Call notwendig" && a.call_notwendig !== "Call notwendig") return 1;
 
-      // Then sort by status
-      const statusA = statusOrder[a.status as keyof typeof statusOrder] || 999;
-      const statusB = statusOrder[b.status as keyof typeof statusOrder] || 999;
-      
+      // Then by status order
+      const statusA = statusOrderMap[a.status] || 999;
+      const statusB = statusOrderMap[b.status] || 999;
       if (statusA !== statusB) return statusA - statusB;
 
       // Finally by creation date (newest first)
