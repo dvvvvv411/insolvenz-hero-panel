@@ -150,6 +150,7 @@ export default function Verwaltung() {
   const [nischenDetailsMap, setNischenDetailsMap] = useState<Record<string, NischenDetails>>({});
   const [showHidden, setShowHidden] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [isPdfViewerOpen, setIsPdfViewerOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isStatusReorderOpen, setIsStatusReorderOpen] = useState(false);
@@ -169,14 +170,13 @@ export default function Verwaltung() {
     },
   });
 
-  const fetchNischen = async () => {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return;
+  const fetchNischen = async (user: any) => {
+    if (!user) return;
 
     const { data, error } = await supabase
       .from("nischen")
       .select("*")
-      .eq("user_id", user.user.id);
+      .eq("user_id", user.id);
 
     if (error) {
       toast({
@@ -198,14 +198,13 @@ export default function Verwaltung() {
     setNischenDetailsMap(detailsMap);
   };
 
-  const fetchInteressenten = async () => {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return;
+  const fetchInteressenten = async (user: any) => {
+    if (!user) return;
 
     const { data, error } = await supabase
       .from("interessenten")
       .select("*")
-      .eq("user_id", user.user.id)
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -218,51 +217,40 @@ export default function Verwaltung() {
     }
 
     setInteressenten(data || []);
-    await fetchAllVerlauf(data || []);
+    await fetchAllVerlauf(user, data || []);
   };
 
-  const fetchAllVerlauf = async (interessentenList: Interessent[]) => {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return;
+  const fetchAllVerlauf = async (user: any, interessentenList: Interessent[]) => {
+    if (!user) return;
 
-    // Fetch email verlauf
-    const { data: emailData } = await supabase
-      .from("interessenten_email_verlauf")
-      .select("*")
-      .eq("user_id", user.user.id);
+    // Parallelize all data fetching
+    const [emailData, callData, notizenData] = await Promise.all([
+      supabase
+        .from("interessenten_email_verlauf")
+        .select("*")
+        .eq("user_id", user.id)
+        .then(({ data }) => data),
+      supabase
+        .from("interessenten_calls")
+        .select("*")
+        .eq("user_id", user.id)
+        .then(({ data }) => data),
+      supabase
+        .from("interessenten_notizen")
+        .select("*")
+        .eq("user_id", user.id)
+        .then(({ data }) => data)
+    ]);
 
+    // Process email data
     const emailMap: Record<string, EmailVerlauf[]> = {};
-    const thumbnails: Record<string, string> = {};
-    
     emailData?.forEach(item => {
       if (!emailMap[item.interessent_id]) emailMap[item.interessent_id] = [];
       emailMap[item.interessent_id].push(item);
     });
     setEmailVerlauf(emailMap);
 
-    // Generate thumbnail URLs
-    if (emailData) {
-      for (const item of emailData) {
-        try {
-          const { data } = await supabase.storage
-            .from("email-screenshots")
-            .createSignedUrl(item.screenshot_path, 600);
-          if (data) {
-            thumbnails[item.id] = data.signedUrl;
-          }
-        } catch (error) {
-          console.error('Error creating thumbnail URL:', error);
-        }
-      }
-    }
-    setThumbnailUrls(thumbnails);
-
-    // Fetch call verlauf
-    const { data: callData } = await supabase
-      .from("interessenten_calls")
-      .select("*")
-      .eq("user_id", user.user.id);
-
+    // Process call data
     const callMap: Record<string, CallVerlauf[]> = {};
     callData?.forEach(item => {
       if (!callMap[item.interessent_id]) callMap[item.interessent_id] = [];
@@ -270,18 +258,53 @@ export default function Verwaltung() {
     });
     setCallVerlauf(callMap);
 
-    // Fetch notizen verlauf
-    const { data: notizenData } = await supabase
-      .from("interessenten_notizen")
-      .select("*")
-      .eq("user_id", user.user.id);
-
+    // Process notizen data
     const notizenMap: Record<string, Notiz[]> = {};
     notizenData?.forEach(item => {
       if (!notizenMap[item.interessent_id]) notizenMap[item.interessent_id] = [];
       notizenMap[item.interessent_id].push(item);
     });
     setNotizenVerlauf(notizenMap);
+
+    // Generate thumbnail URLs in background (non-blocking)
+    if (emailData) {
+      setTimeout(() => {
+        generateThumbnailUrls(emailData);
+      }, 0);
+    }
+  };
+
+  const generateThumbnailUrls = async (emailData: any[]) => {
+    const thumbnails: Record<string, string> = {};
+    
+    // Process thumbnails in parallel batches
+    const batchSize = 5;
+    for (let i = 0; i < emailData.length; i += batchSize) {
+      const batch = emailData.slice(i, i + batchSize);
+      const promises = batch.map(async (item) => {
+        try {
+          const { data } = await supabase.storage
+            .from("email-screenshots")
+            .createSignedUrl(item.screenshot_path, 600);
+          if (data) {
+            return { id: item.id, url: data.signedUrl };
+          }
+        } catch (error) {
+          console.error('Error creating thumbnail URL:', error);
+        }
+        return null;
+      });
+
+      const results = await Promise.all(promises);
+      results.forEach(result => {
+        if (result) {
+          thumbnails[result.id] = result.url;
+        }
+      });
+
+      // Update thumbnails progressively
+      setThumbnailUrls(prev => ({ ...prev, ...thumbnails }));
+    }
   };
 
   const copyToClipboard = async (text: string) => {
@@ -365,7 +388,7 @@ export default function Verwaltung() {
 
     form.reset();
     setIsAddDialogOpen(false);
-    fetchInteressenten();
+    fetchInteressenten(currentUser);
   };
 
   const uploadEmailScreenshot = async () => {
@@ -416,7 +439,7 @@ export default function Verwaltung() {
 
       setIsEmailDialogOpen(false);
       setSelectedFile(null);
-      fetchInteressenten();
+      fetchInteressenten(currentUser);
     } else {
       await saveScreenshotFromUrl();
     }
@@ -450,7 +473,7 @@ export default function Verwaltung() {
 
       setIsEmailDialogOpen(false);
       setScreenshotUrl("");
-      fetchInteressenten();
+      fetchInteressenten(currentUser);
 
     } catch (error) {
       console.error('Error saving screenshot from URL:', error);
@@ -495,7 +518,7 @@ export default function Verwaltung() {
 
     setIsCallDialogOpen(false);
     setCallNotiz("");
-    fetchInteressenten();
+    fetchInteressenten(currentUser);
   };
 
   const addNotiz = async () => {
@@ -528,7 +551,7 @@ export default function Verwaltung() {
 
     setIsNotizDialogOpen(false);
     setNotizText("");
-    fetchInteressenten();
+    fetchInteressenten(currentUser);
   };
 
   const updateStatus = async (interessentId: string, newStatus: string) => {
@@ -546,7 +569,7 @@ export default function Verwaltung() {
       return;
     }
 
-    fetchInteressenten();
+    fetchInteressenten(currentUser);
   };
 
   const updateCallNotwendig = async (interessentId: string, callStatus: string, grund?: string) => {
@@ -569,7 +592,7 @@ export default function Verwaltung() {
 
     setIsCallGrundDialogOpen(false);
     setCallGrund("");
-    fetchInteressenten();
+    fetchInteressenten(currentUser);
   };
 
   const viewEmailScreenshot = async (screenshot: EmailVerlauf) => {
@@ -632,13 +655,13 @@ export default function Verwaltung() {
 
     setIsImageViewerOpen(false);
     setCurrentViewingScreenshot(null);
-    fetchInteressenten();
+    fetchInteressenten(currentUser);
   };
 
   const saveStatusOrder = (newOrder: string[]) => {
     localStorage.setItem('statusOrder', JSON.stringify(newOrder));
     setStatusOrder(newOrder);
-    fetchInteressenten(); // Refresh to apply new sorting
+    fetchInteressenten(currentUser); // Refresh to apply new sorting
   };
 
   const handleDragEnd = (result: any) => {
@@ -737,14 +760,32 @@ export default function Verwaltung() {
 
   useEffect(() => {
     const loadData = async () => {
-      await Promise.all([fetchNischen(), fetchInteressenten()]);
+      // Get user once at the beginning
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) {
+        setLoading(false);
+        return;
+      }
+      
+      setCurrentUser(user.user);
+      
+      // Parallelize data fetching
+      await Promise.all([
+        fetchNischen(user.user), 
+        fetchInteressenten(user.user)
+      ]);
+      
       setLoading(false);
     };
     loadData();
   }, []);
 
   if (loading) {
-    return <div className="p-6">Lädt...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (
@@ -1225,7 +1266,14 @@ export default function Verwaltung() {
                   (uploadMethod === "url" && (!screenshotUrl || isUrlUploadLoading))
                 }
               >
-                {isUrlUploadLoading ? "Lädt..." : "Hochladen"}
+                {isUrlUploadLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                    Wird gespeichert...
+                  </div>
+                ) : (
+                  "Hochladen"
+                )}
               </Button>
             </div>
           </div>
