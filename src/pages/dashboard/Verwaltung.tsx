@@ -1374,19 +1374,27 @@ export default function Verwaltung() {
                 <TableCell className="px-2 py-2">
                   <div className="space-y-2">
                     <div className="flex flex-wrap gap-1">
-                       {callVerlauf[interessent.id]?.map((call, index) => (
-                         <div key={call.id} className="relative inline-block">
-                           <Button
-                             variant="outline"
-                             size="sm"
-                             className="h-8 px-2 pr-6 text-xs"
-                             onClick={() => {
-                               setViewCall(call);
-                               setIsCallViewerOpen(true);
-                             }}
-                           >
-                             {call.typ.replace("Mailbox", "MB")} {index + 1}
-                           </Button>
+                        {callVerlauf[interessent.id]?.map((call, index) => {
+                          const getCallTypeNumber = (currentCall: any, callList: any[], currentIndex: number) => {
+                            return callList
+                              .slice(0, currentIndex + 1)
+                              .filter(c => c.typ === currentCall.typ)
+                              .length;
+                          };
+                          
+                          return (
+                            <div key={call.id} className="relative inline-block">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-2 pr-6 text-xs"
+                                onClick={() => {
+                                  setViewCall(call);
+                                  setIsCallViewerOpen(true);
+                                }}
+                              >
+                                {call.typ.replace("Mailbox", "MB")} {getCallTypeNumber(call, callVerlauf[interessent.id], index)}
+                              </Button>
                            <TooltipProvider>
                              <Tooltip>
                                <TooltipTrigger asChild>
@@ -1402,8 +1410,9 @@ export default function Verwaltung() {
                                </TooltipContent>
                              </Tooltip>
                            </TooltipProvider>
-                         </div>
-                       ))}
+                          </div>
+                          );
+                        })}
                       <Button
                         variant="outline"
                         size="sm"
