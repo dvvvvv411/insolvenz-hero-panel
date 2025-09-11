@@ -2016,6 +2016,23 @@ export default function Verwaltung() {
                                    className="w-8 h-8 rounded border cursor-pointer"
                                    title="Farbe für diesen Status wählen"
                                  />
+                                 <input
+                                   type="text"
+                                   value={statusColors[status] || ""}
+                                   onChange={(e) => {
+                                     const value = e.target.value;
+                                     if (value === "" || /^#[0-9A-Fa-f]{0,6}$/.test(value)) {
+                                       const newColors = { ...statusColors, [status]: value };
+                                       setStatusColors(newColors);
+                                       if (value.length === 7) { // Complete hex code
+                                         setStatusColor(status, value);
+                                       }
+                                     }
+                                   }}
+                                   placeholder="#ffffff"
+                                   className="w-20 h-8 px-2 text-xs border rounded"
+                                   title="Farbcode eingeben (z.B. #eb4d4b)"
+                                 />
                                  {statusColors[status] && (
                                    <Button
                                      variant="ghost"
