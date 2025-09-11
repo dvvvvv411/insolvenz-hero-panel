@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Upload, ExternalLink, Trash2, Building2 } from "lucide-react";
+import { Plus, Upload, ExternalLink, Trash2, Package } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -341,7 +341,7 @@ export default function Nischen() {
         <CardContent>
           {nischen.length === 0 ? (
             <div className="text-center py-12">
-              <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">
                 Noch keine Nischen vorhanden. Fügen Sie Ihre erste Nische hinzu.
               </p>
