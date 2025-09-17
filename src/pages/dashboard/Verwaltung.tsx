@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { fetchStatusColors, updateStatusColor, deleteStatusColor, migrateLocalStorageColors } from "@/lib/statusColors";
 
 const formSchema = z.object({
   unternehmensname: z.string().min(1, "Unternehmensname ist erforderlich"),
@@ -96,22 +97,10 @@ const getStatusOrder = () => {
   return saved ? JSON.parse(saved) : defaultStatusOrder;
 };
 
-// Get status colors from localStorage
+// Legacy localStorage functions - now handled by database
 const getStatusColors = () => {
-  const saved = localStorage.getItem('statusColors');
-  return saved ? JSON.parse(saved) : {};
-};
-
-// Save status colors to localStorage
-const saveStatusColors = (colors: Record<string, string>) => {
-  localStorage.setItem('statusColors', JSON.stringify(colors));
-};
-
-// Set color for a specific status
-const setStatusColor = (status: string, color: string) => {
-  const colors = getStatusColors();
-  colors[status] = color;
-  saveStatusColors(colors);
+  console.warn('getStatusColors() is deprecated, use fetchStatusColors() instead');
+  return {};
 };
 
 // Get contrasting text color (white or black) based on background
@@ -196,7 +185,7 @@ export default function Verwaltung() {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isStatusReorderOpen, setIsStatusReorderOpen] = useState(false);
   const [statusOrder, setStatusOrder] = useState(getStatusOrder());
-  const [statusColors, setStatusColors] = useState(getStatusColors());
+  const [statusColors, setStatusColors] = useState<Record<string, string>>({});
   const [newStatusName, setNewStatusName] = useState("");
   const { toast } = useToast();
 
@@ -933,7 +922,7 @@ export default function Verwaltung() {
     });
   };
 
-  const deleteStatus = (statusToDelete: string) => {
+  const deleteStatus = async (statusToDelete: string) => {
     // Check if status is in use
     const usageCount = interessenten.filter(i => i.status === statusToDelete).length;
     
@@ -953,7 +942,7 @@ export default function Verwaltung() {
     const newColors = { ...statusColors };
     delete newColors[statusToDelete];
     setStatusColors(newColors);
-    saveStatusColors(newColors);
+    await deleteStatusColor(statusToDelete);
     
     toast({
       title: "Erfolg",
@@ -1522,7 +1511,7 @@ export default function Verwaltung() {
                              onClick={(e) => {
                                e.preventDefault();
                                e.stopPropagation();
-                               setStatusColors(getStatusColors()); // Reload colors from localStorage
+                               // Colors are already loaded from database
                                setIsStatusReorderOpen(true);
                              }}
                           >
@@ -2321,27 +2310,28 @@ export default function Verwaltung() {
                                  <input
                                    type="color"
                                    value={statusColors[status] || "#ffffff"}
-                                   onChange={(e) => {
-                                     const newColors = { ...statusColors, [status]: e.target.value };
-                                     setStatusColors(newColors);
-                                     setStatusColor(status, e.target.value);
-                                   }}
+                                    onChange={async (e) => {
+                                      const newColor = e.target.value;
+                                      const newColors = { ...statusColors, [status]: newColor };
+                                      setStatusColors(newColors);
+                                      await updateStatusColor(status, newColor);
+                                    }}
                                    className="w-8 h-8 rounded border cursor-pointer"
                                    title="Farbe für diesen Status wählen"
                                  />
                                  <input
                                    type="text"
                                    value={statusColors[status] || ""}
-                                   onChange={(e) => {
-                                     const value = e.target.value;
-                                     if (value === "" || /^#[0-9A-Fa-f]{0,6}$/.test(value)) {
-                                       const newColors = { ...statusColors, [status]: value };
-                                       setStatusColors(newColors);
-                                       if (value.length === 7) { // Complete hex code
-                                         setStatusColor(status, value);
-                                       }
-                                     }
-                                   }}
+                                    onChange={async (e) => {
+                                      const value = e.target.value;
+                                      if (value === "" || /^#[0-9A-Fa-f]{0,6}$/.test(value)) {
+                                        const newColors = { ...statusColors, [status]: value };
+                                        setStatusColors(newColors);
+                                        if (value.length === 7) { // Complete hex code
+                                          await updateStatusColor(status, value);
+                                        }
+                                      }
+                                    }}
                                    placeholder="#ffffff"
                                    className="w-20 h-8 px-2 text-xs border rounded"
                                    title="Farbcode eingeben (z.B. #eb4d4b)"
@@ -2351,12 +2341,12 @@ export default function Verwaltung() {
                                      variant="ghost"
                                      size="sm"
                                      className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                                     onClick={() => {
-                                       const newColors = { ...statusColors };
-                                       delete newColors[status];
-                                       setStatusColors(newColors);
-                                       saveStatusColors(newColors);
-                                     }}
+                                      onClick={async () => {
+                                        const newColors = { ...statusColors };
+                                        delete newColors[status];
+                                        setStatusColors(newColors);
+                                        await deleteStatusColor(status);
+                                      }}
                                      title="Farbe entfernen"
                                    >
                                      <X className="w-3 h-3" />
