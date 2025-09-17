@@ -20,7 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { fetchUserStatusSettings, updateStatusSettings, deleteStatus, migrateAllUserStatusData, reorderStatuses, addNewStatus, type StatusSetting } from "@/lib/statusColors";
+import { fetchUserStatusSettings, updateStatusSettings, deleteStatus as deleteStatusFromDB, migrateAllUserStatusData, reorderStatuses, addNewStatus, type StatusSetting } from "@/lib/statusColors";
 
 const formSchema = z.object({
   unternehmensname: z.string().min(1, "Unternehmensname ist erforderlich"),
@@ -939,7 +939,7 @@ export default function Verwaltung() {
       return;
     }
     
-    const success = await deleteStatus(statusToDelete);
+    const success = await deleteStatusFromDB(statusToDelete);
     if (success) {
       await loadStatusSettings(); // Reload to reflect changes
       
@@ -2369,7 +2369,7 @@ export default function Verwaltung() {
                                  variant="ghost"
                                  size="sm"
                                  className={`h-8 w-8 p-0 ${!canDelete ? 'opacity-50 cursor-not-allowed' : 'hover:bg-destructive hover:text-destructive-foreground'}`}
-                                 onClick={() => canDelete && deleteStatus(status)}
+                                 onClick={() => canDelete && handleDeleteStatus(status)}
                                  disabled={!canDelete}
                                  title={canDelete ? `Status "${status}" löschen` : `Status wird von ${usageCount} Interessent${usageCount > 1 ? 'en' : ''} verwendet`}
                                >
