@@ -6,8 +6,8 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Redirect to nischen by default
-    navigate("/dashboard/nischen", { replace: true });
+    // Redirect to verwaltung by default
+    navigate("/dashboard/verwaltung", { replace: true });
   }, [navigate]);
 
   return (

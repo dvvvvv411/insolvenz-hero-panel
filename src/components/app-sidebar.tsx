@@ -20,14 +20,14 @@ import {
 
 const navigationItems = [
   {
-    title: "Nischen",
-    url: "/dashboard/nischen",
-    icon: Building2,
-  },
-  {
     title: "Verwaltung",
     url: "/dashboard/verwaltung",
     icon: Users,
+  },
+  {
+    title: "Nischen",
+    url: "/dashboard/nischen",
+    icon: Building2,
   },
 ];
 
