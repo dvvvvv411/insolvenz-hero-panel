@@ -8,6 +8,9 @@ export default defineConfig(() => ({
     host: "::",
     port: 8080,
   },
+  preview: {
+    allowedHosts: ['inso.paymentwallsecure.com']
+  },
   plugins: [react()],
   resolve: {
     alias: {
