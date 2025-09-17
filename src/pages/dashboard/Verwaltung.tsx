@@ -956,7 +956,7 @@ export default function Verwaltung() {
 
   const getSortedInteressenten = () => {
     const filtered = showHidden 
-      ? interessenten 
+      ? interessenten.filter(i => i.status === "Kein Interesse")
       : interessenten.filter(i => i.status !== "Kein Interesse");
 
     const statusOrderMap = getStatusOrderMap();
