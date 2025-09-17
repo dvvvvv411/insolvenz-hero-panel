@@ -20,7 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { fetchStatusColors, updateStatusColor, deleteStatusColor, migrateLocalStorageColors } from "@/lib/statusColors";
+import { fetchUserStatusSettings, updateStatusSettings, deleteStatus, migrateAllUserStatusData, reorderStatuses, addNewStatus, type StatusSetting } from "@/lib/statusColors";
 
 const formSchema = z.object({
   unternehmensname: z.string().min(1, "Unternehmensname ist erforderlich"),
@@ -184,10 +184,15 @@ export default function Verwaltung() {
   const [isPdfViewerOpen, setIsPdfViewerOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isStatusReorderOpen, setIsStatusReorderOpen] = useState(false);
-  const [statusOrder, setStatusOrder] = useState(getStatusOrder());
-  const [statusColors, setStatusColors] = useState<Record<string, string>>({});
+  const [statusSettings, setStatusSettings] = useState<StatusSetting[]>([]);
   const [newStatusName, setNewStatusName] = useState("");
   const { toast } = useToast();
+
+  // Helper functions for status settings
+  const getStatusColor = (status: string): string => {
+    const setting = statusSettings.find(s => s.status === status);
+    return setting?.color || '#6b7280';
+  };
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -870,29 +875,26 @@ export default function Verwaltung() {
     fetchInteressenten(currentUser);
   };
 
-  const saveStatusOrder = (newOrder: string[]) => {
-    localStorage.setItem('statusOrder', JSON.stringify(newOrder));
-    setStatusOrder(newOrder);
-    fetchInteressenten(currentUser); // Refresh to apply new sorting
-  };
-
-  const handleDragEnd = (result: any) => {
+  const handleDragEnd = async (result: any) => {
     if (!result.destination) return;
 
-    const items = [...statusOrder];
+    const currentOrder = statusSettings.map(s => s.status);
+    const items = [...currentOrder];
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
 
-    saveStatusOrder(items);
+    await reorderStatuses(items);
+    await loadStatusSettings(); // Reload to reflect changes
+    fetchInteressenten(currentUser); // Refresh to apply new sorting
   };
 
-  const addNewStatus = () => {
+  const handleAddNewStatus = async () => {
     if (!newStatusName.trim()) return;
     
     const trimmedName = newStatusName.trim();
     
     // Check for duplicates (case-insensitive)
-    if (statusOrder.some(status => status.toLowerCase() === trimmedName.toLowerCase())) {
+    if (statusSettings.some(s => s.status.toLowerCase() === trimmedName.toLowerCase())) {
       toast({
         variant: "destructive",
         title: "Fehler",
@@ -912,17 +914,19 @@ export default function Verwaltung() {
       return;
     }
     
-    const newOrder = [...statusOrder, trimmedName];
-    saveStatusOrder(newOrder);
-    setNewStatusName("");
-    
-    toast({
-      title: "Erfolg",
-      description: `Status "${trimmedName}" wurde hinzugefügt.`,
-    });
+    const success = await addNewStatus(trimmedName);
+    if (success) {
+      await loadStatusSettings(); // Reload to reflect changes
+      setNewStatusName("");
+      
+      toast({
+        title: "Erfolg",
+        description: `Status "${trimmedName}" wurde hinzugefügt.`,
+      });
+    }
   };
 
-  const deleteStatus = async (statusToDelete: string) => {
+  const handleDeleteStatus = async (statusToDelete: string) => {
     // Check if status is in use
     const usageCount = interessenten.filter(i => i.status === statusToDelete).length;
     
@@ -935,19 +939,15 @@ export default function Verwaltung() {
       return;
     }
     
-    const newOrder = statusOrder.filter(status => status !== statusToDelete);
-    saveStatusOrder(newOrder);
-    
-    // Also remove the color for this status
-    const newColors = { ...statusColors };
-    delete newColors[statusToDelete];
-    setStatusColors(newColors);
-    await deleteStatusColor(statusToDelete);
-    
-    toast({
-      title: "Erfolg",
-      description: `Status "${statusToDelete}" wurde gelöscht.`,
-    });
+    const success = await deleteStatus(statusToDelete);
+    if (success) {
+      await loadStatusSettings(); // Reload to reflect changes
+      
+      toast({
+        title: "Erfolg",
+        description: `Status "${statusToDelete}" wurde gelöscht.`,
+      });
+    }
   };
 
   const getStatusUsageCount = (status: string) => {
@@ -976,6 +976,19 @@ export default function Verwaltung() {
     });
   };
 
+  const loadStatusSettings = async () => {
+    try {
+      // First run migration to move any existing data to the new system
+      await migrateAllUserStatusData();
+      
+      // Then load the unified status settings
+      const settings = await fetchUserStatusSettings();
+      setStatusSettings(settings);
+    } catch (error) {
+      console.error('Error loading status settings:', error);
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       // Get user once at the beginning
@@ -990,7 +1003,8 @@ export default function Verwaltung() {
       // Parallelize data fetching
       await Promise.all([
         fetchNischen(user.user), 
-        fetchInteressenten(user.user)
+        fetchInteressenten(user.user),
+        loadStatusSettings()
       ]);
       
       setLoading(false);
@@ -1487,13 +1501,13 @@ export default function Verwaltung() {
                        value={interessent.status}
                        onValueChange={(value) => updateStatus(interessent.id, value)}
                      >
-                       <SelectTrigger 
-                         className="h-8 text-xs"
-                         style={statusColors[interessent.status] ? {
-                           backgroundColor: statusColors[interessent.status],
-                           color: getContrastingTextColor(statusColors[interessent.status]),
-                           borderColor: statusColors[interessent.status]
-                         } : {}}
+                        <SelectTrigger 
+                          className="h-8 text-xs"
+                          style={{
+                            backgroundColor: getStatusColor(interessent.status),
+                            color: getContrastingTextColor(getStatusColor(interessent.status)),
+                            borderColor: getStatusColor(interessent.status)
+                          }}
                        >
                          <SelectValue />
                        </SelectTrigger>
@@ -2285,7 +2299,8 @@ export default function Verwaltung() {
                     ref={provided.innerRef}
                     className="space-y-2"
                   >
-                    {statusOrder.map((status, index) => {
+                     {statusSettings.map((setting, index) => {
+                       const status = setting.status;
                       const usageCount = getStatusUsageCount(status);
                       const canDelete = usageCount === 0;
                       
@@ -2307,51 +2322,43 @@ export default function Verwaltung() {
                                </div>
                                <span className="font-medium flex-1">{status}</span>
                                <div className="flex items-center gap-2">
-                                 <input
-                                   type="color"
-                                   value={statusColors[status] || "#ffffff"}
-                                    onChange={async (e) => {
-                                      const newColor = e.target.value;
-                                      const newColors = { ...statusColors, [status]: newColor };
-                                      setStatusColors(newColors);
-                                      await updateStatusColor(status, newColor);
-                                    }}
+                                  <input
+                                    type="color"
+                                    value={getStatusColor(status)}
+                                     onChange={async (e) => {
+                                       const newColor = e.target.value;
+                                       await updateStatusSettings(status, { color: newColor });
+                                       await loadStatusSettings();
+                                     }}
                                    className="w-8 h-8 rounded border cursor-pointer"
                                    title="Farbe für diesen Status wählen"
                                  />
                                  <input
                                    type="text"
-                                   value={statusColors[status] || ""}
-                                    onChange={async (e) => {
-                                      const value = e.target.value;
-                                      if (value === "" || /^#[0-9A-Fa-f]{0,6}$/.test(value)) {
-                                        const newColors = { ...statusColors, [status]: value };
-                                        setStatusColors(newColors);
-                                        if (value.length === 7) { // Complete hex code
-                                          await updateStatusColor(status, value);
-                                        }
-                                      }
-                                    }}
+                                    value={getStatusColor(status)}
+                                     onChange={async (e) => {
+                                       const value = e.target.value;
+                                       if (value.match(/^#[0-9A-F]{6}$/i)) {
+                                           await updateStatusSettings(status, { color: value });
+                                           await loadStatusSettings();
+                                       }
+                                     }}
                                    placeholder="#ffffff"
                                    className="w-20 h-8 px-2 text-xs border rounded"
                                    title="Farbcode eingeben (z.B. #eb4d4b)"
                                  />
-                                 {statusColors[status] && (
-                                   <Button
-                                     variant="ghost"
-                                     size="sm"
-                                     className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                                  <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
                                       onClick={async () => {
-                                        const newColors = { ...statusColors };
-                                        delete newColors[status];
-                                        setStatusColors(newColors);
-                                        await deleteStatusColor(status);
-                                      }}
-                                     title="Farbe entfernen"
-                                   >
-                                     <X className="w-3 h-3" />
-                                   </Button>
-                                 )}
+                                         await updateStatusSettings(status, { color: '#6b7280' });
+                                         await loadStatusSettings();
+                                       }}
+                                      title="Farbe entfernen"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </Button>
                                </div>
                                {usageCount > 0 && (
                                  <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
@@ -2390,13 +2397,13 @@ export default function Verwaltung() {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
-                      addNewStatus();
+                      handleAddNewStatus();
                     }
                   }}
                   className="flex-1"
                 />
                 <Button 
-                  onClick={addNewStatus}
+                  onClick={handleAddNewStatus}
                   disabled={!newStatusName.trim()}
                   variant="default"
                 >
