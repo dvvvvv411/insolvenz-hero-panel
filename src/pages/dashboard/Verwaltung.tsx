@@ -1406,39 +1406,42 @@ export default function Verwaltung() {
       </div>
 
       {/* Activity Log Card */}
-      <Card className="mb-6">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
+      <Card className="mb-6 bg-gray-900 border-gray-700">
+        <CardHeader className="pb-3 border-b border-gray-700">
+          <CardTitle className="text-lg flex items-center gap-2 text-gray-100">
             <Activity className="w-5 h-5" />
             Aktivitäts-Protokoll
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-[300px] pr-4">
+        <CardContent className="p-0">
+          <ScrollArea className="h-[300px]">
             {aktivitaeten.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8">
+              <div className="text-center text-gray-400 py-8 font-mono text-sm">
                 Noch keine Aktivitäten vorhanden
               </div>
             ) : (
-              <div className="space-y-3">
-                {aktivitaeten.map((aktivitaet) => (
-                  <div key={aktivitaet.id} className="flex gap-3 pb-3 border-b last:border-0">
-                    <div className="mt-0.5 flex-shrink-0">
-                      {getActivityIcon(aktivitaet.aktivitaets_typ)}
+              <div>
+                {aktivitaeten.map((aktivitaet, index) => {
+                  const ActivityIcon = getActivityIcon(aktivitaet.aktivitaets_typ);
+                  const interessentName = getInteressentName(aktivitaet.interessent_id);
+                  const timestamp = format(new Date(aktivitaet.created_at), "dd.MM.yyyy HH:mm", { locale: de });
+                  
+                  return (
+                    <div 
+                      key={aktivitaet.id} 
+                      className={`grid grid-cols-[130px_32px_180px_1fr] gap-2 items-center px-4 py-2 font-mono text-sm border-b border-gray-800 hover:bg-gray-800/50 transition-colors ${
+                        index % 2 === 0 ? 'bg-gray-900' : 'bg-gray-850'
+                      }`}
+                    >
+                      <span className="text-gray-400 text-xs">{timestamp}</span>
+                      <div className="flex justify-center">
+                        {ActivityIcon}
+                      </div>
+                      <span className="text-gray-200 font-medium truncate">{interessentName}</span>
+                      <span className="text-gray-300">{aktivitaet.beschreibung}</span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">
-                        {getInteressentName(aktivitaet.interessent_id)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {aktivitaet.beschreibung}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {format(new Date(aktivitaet.created_at), "dd.MM.yyyy HH:mm", { locale: de })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </ScrollArea>
