@@ -62,6 +62,39 @@ export type Database = {
         }
         Relationships: []
       }
+      interessenten_aktivitaeten: {
+        Row: {
+          aktivitaets_typ: string
+          alter_wert: string | null
+          beschreibung: string
+          created_at: string
+          id: string
+          interessent_id: string
+          neuer_wert: string | null
+          user_id: string
+        }
+        Insert: {
+          aktivitaets_typ: string
+          alter_wert?: string | null
+          beschreibung: string
+          created_at?: string
+          id?: string
+          interessent_id: string
+          neuer_wert?: string | null
+          user_id: string
+        }
+        Update: {
+          aktivitaets_typ?: string
+          alter_wert?: string | null
+          beschreibung?: string
+          created_at?: string
+          id?: string
+          interessent_id?: string
+          neuer_wert?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       interessenten_calls: {
         Row: {
           created_at: string

@@ -14,7 +14,9 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Phone, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings, X, Edit, Search } from "lucide-react";
+import { Plus, Phone, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings, X, Edit, Search, Activity, MessageSquare, PhoneCall, AlertCircle } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -64,6 +66,16 @@ interface CallVerlauf {
 interface Notiz {
   id: string;
   notiz: string;
+  created_at: string;
+}
+
+interface Aktivitaet {
+  id: string;
+  interessent_id: string;
+  aktivitaets_typ: string;
+  alter_wert?: string;
+  neuer_wert?: string;
+  beschreibung: string;
   created_at: string;
 }
 
@@ -187,6 +199,7 @@ export default function Verwaltung() {
   const [statusSettings, setStatusSettings] = useState<StatusSetting[]>([]);
   const [newStatusName, setNewStatusName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [aktivitaeten, setAktivitaeten] = useState<Aktivitaet[]>([]);
   const { toast } = useToast();
 
   // Helper functions for status settings
@@ -481,6 +494,9 @@ export default function Verwaltung() {
         return;
       }
 
+      // Log activity
+      await logActivity(selectedInteressent.id, "email_screenshot", "Email-Screenshot hinzugefügt");
+
       toast({
         title: "Erfolg",
         description: "Email-Screenshot wurde hinzugefügt",
@@ -489,6 +505,7 @@ export default function Verwaltung() {
       setIsEmailDialogOpen(false);
       setSelectedFile(null);
       fetchInteressenten(currentUser);
+      loadAktivitaeten(currentUser);
     } else {
       await saveScreenshotFromUrl();
     }
@@ -515,6 +532,9 @@ export default function Verwaltung() {
         throw new Error(data.error || 'Unbekannter Fehler');
       }
 
+      // Log activity
+      await logActivity(selectedInteressent.id, "email_screenshot", "Email-Screenshot von URL hinzugefügt");
+
       toast({
         title: "Erfolg",
         description: "Screenshot wurde von URL gespeichert",
@@ -523,6 +543,7 @@ export default function Verwaltung() {
       setIsEmailDialogOpen(false);
       setScreenshotUrl("");
       fetchInteressenten(currentUser);
+      loadAktivitaeten(currentUser);
 
     } catch (error) {
       console.error('Error saving screenshot from URL:', error);
@@ -534,6 +555,28 @@ export default function Verwaltung() {
     } finally {
       setIsUrlUploadLoading(false);
     }
+  };
+
+  const logActivity = async (
+    interessentId: string,
+    typ: string,
+    beschreibung: string,
+    alterWert?: string,
+    neuerWert?: string
+  ) => {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) return;
+
+    await supabase
+      .from("interessenten_aktivitaeten")
+      .insert({
+        interessent_id: interessentId,
+        user_id: user.user.id,
+        aktivitaets_typ: typ,
+        alter_wert: alterWert,
+        neuer_wert: neuerWert,
+        beschreibung: beschreibung,
+      });
   };
 
   const addCall = async (typ: string) => {
@@ -560,6 +603,13 @@ export default function Verwaltung() {
       return;
     }
 
+    // Log activity
+    const notizPreview = callNotiz ? (callNotiz.length > 50 ? callNotiz.substring(0, 50) + "..." : callNotiz) : "";
+    const beschreibung = typ === "Call" 
+      ? `Call-Notiz hinzugefügt${notizPreview ? ": " + notizPreview : ""}`
+      : `${typ} hinzugefügt`;
+    await logActivity(selectedInteressent.id, "call_notiz", beschreibung);
+
     toast({
       title: "Erfolg",
       description: `${typ} wurde hinzugefügt`,
@@ -568,6 +618,7 @@ export default function Verwaltung() {
     setIsCallDialogOpen(false);
     setCallNotiz("");
     fetchInteressenten(currentUser);
+    loadAktivitaeten(currentUser);
   };
 
   const addNotiz = async () => {
@@ -593,6 +644,10 @@ export default function Verwaltung() {
       return;
     }
 
+    // Log activity
+    const notizPreview = notizText.length > 50 ? notizText.substring(0, 50) + "..." : notizText;
+    await logActivity(selectedInteressent.id, "notiz", `Notiz hinzugefügt: ${notizPreview}`);
+
     toast({
       title: "Erfolg",
       description: "Notiz wurde hinzugefügt",
@@ -601,10 +656,15 @@ export default function Verwaltung() {
     setIsNotizDialogOpen(false);
     setNotizText("");
     fetchInteressenten(currentUser);
+    loadAktivitaeten(currentUser);
   };
 
   const updateStatus = async (interessentId: string, newStatus: string) => {
     const now = new Date().toISOString();
+    
+    // Get old status for logging
+    const oldInteressent = interessenten.find(i => i.id === interessentId);
+    const oldStatus = oldInteressent?.status;
     
     // Optimistic update - update UI immediately
     setInteressenten(prev => 
@@ -637,6 +697,16 @@ export default function Verwaltung() {
           description: "Status konnte nicht aktualisiert werden",
           variant: "destructive",
         });
+      } else {
+        // Log activity
+        await logActivity(
+          interessentId,
+          "status_aenderung",
+          `Status von "${oldStatus}" zu "${newStatus}" geändert`,
+          oldStatus,
+          newStatus
+        );
+        loadAktivitaeten(currentUser);
       }
     } catch (error) {
       // Revert optimistic update on error
@@ -657,6 +727,10 @@ export default function Verwaltung() {
   };
 
   const updateCallNotwendig = async (interessentId: string, callStatus: string, grund?: string) => {
+    // Get old status for logging
+    const oldInteressent = interessenten.find(i => i.id === interessentId);
+    const oldCallStatus = oldInteressent?.call_notwendig;
+    
     // Optimistic update - update UI immediately
     setInteressenten(prev => 
       prev.map(interessent => 
@@ -699,8 +773,21 @@ export default function Verwaltung() {
         return;
       }
 
+      // Log activity
+      const beschreibung = grund 
+        ? `Call-Status von "${oldCallStatus}" zu "${callStatus}" geändert (Grund: ${grund})`
+        : `Call-Status von "${oldCallStatus}" zu "${callStatus}" geändert`;
+      await logActivity(
+        interessentId,
+        "call_notwendig_aenderung",
+        beschreibung,
+        oldCallStatus,
+        callStatus
+      );
+
       setIsCallGrundDialogOpen(false);
       setCallGrund("");
+      loadAktivitaeten(currentUser);
     } catch (error) {
       // Revert optimistic update on error
       const originalInteressent = interessenten.find(i => i.id === interessentId);
@@ -994,6 +1081,46 @@ export default function Verwaltung() {
     );
   };
 
+  const loadAktivitaeten = async (user: any) => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("interessenten_aktivitaeten")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (error) {
+      console.error("Fehler beim Laden der Aktivitäten:", error);
+      return;
+    }
+
+    setAktivitaeten(data || []);
+  };
+
+  const getActivityIcon = (typ: string) => {
+    switch (typ) {
+      case "status_aenderung":
+        return <Activity className="w-4 h-4 text-blue-500" />;
+      case "call_notwendig_aenderung":
+        return <AlertCircle className="w-4 h-4 text-orange-500" />;
+      case "call_notiz":
+        return <PhoneCall className="w-4 h-4 text-green-500" />;
+      case "notiz":
+        return <MessageSquare className="w-4 h-4 text-purple-500" />;
+      case "email_screenshot":
+        return <Mail className="w-4 h-4 text-cyan-500" />;
+      default:
+        return <Activity className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  const getInteressentName = (interessentId: string) => {
+    const interessent = interessenten.find(i => i.id === interessentId);
+    return interessent?.unternehmensname || "Unbekannt";
+  };
+
   const loadStatusSettings = async () => {
     try {
       // First run migration to move any existing data to the new system
@@ -1022,7 +1149,8 @@ export default function Verwaltung() {
       await Promise.all([
         fetchNischen(user.user), 
         fetchInteressenten(user.user),
-        loadStatusSettings()
+        loadStatusSettings(),
+        loadAktivitaeten(user.user)
       ]);
       
       setLoading(false);
@@ -1276,6 +1404,46 @@ export default function Verwaltung() {
           </Dialog>
         </div>
       </div>
+
+      {/* Activity Log Card */}
+      <Card className="mb-6">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Activity className="w-5 h-5" />
+            Aktivitäts-Protokoll
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ScrollArea className="h-[300px] pr-4">
+            {aktivitaeten.length === 0 ? (
+              <div className="text-center text-muted-foreground py-8">
+                Noch keine Aktivitäten vorhanden
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {aktivitaeten.map((aktivitaet) => (
+                  <div key={aktivitaet.id} className="flex gap-3 pb-3 border-b last:border-0">
+                    <div className="mt-0.5 flex-shrink-0">
+                      {getActivityIcon(aktivitaet.aktivitaets_typ)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">
+                        {getInteressentName(aktivitaet.interessent_id)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {aktivitaet.beschreibung}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {format(new Date(aktivitaet.created_at), "dd.MM.yyyy HH:mm", { locale: de })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </CardContent>
+      </Card>
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
