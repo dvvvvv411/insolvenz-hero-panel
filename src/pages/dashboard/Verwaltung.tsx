@@ -14,7 +14,7 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Phone, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings, X, Edit, Search, Activity, MessageSquare, PhoneCall, AlertCircle } from "lucide-react";
+import { Plus, Phone, PhoneOff, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings, X, Edit, Search, Activity, MessageSquare, PhoneCall, AlertCircle, RefreshCw } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
@@ -178,6 +178,7 @@ export default function Verwaltung() {
   const [isUrlUploadLoading, setIsUrlUploadLoading] = useState(false);
   const [uploadMethod, setUploadMethod] = useState<"file" | "url">("url");
   const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({});
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [currentViewingScreenshot, setCurrentViewingScreenshot] = useState<EmailVerlauf | null>(null);
   const [callNotiz, setCallNotiz] = useState("");
   const [notizText, setNotizText] = useState("");
@@ -1099,12 +1100,23 @@ export default function Verwaltung() {
     setAktivitaeten(data || []);
   };
 
-  const getActivityIcon = (typ: string) => {
+  const getActivityIcon = (typ: string, beschreibung?: string) => {
+    // Check for call status changes based on description
+    if (typ === "call_notwendig_aenderung" && beschreibung) {
+      if (beschreibung.includes("Call notwendig")) {
+        return <Phone className="w-4 h-4 text-orange-500" />;
+      } else if (beschreibung.includes("Call erledigt")) {
+        return <Phone className="w-4 h-4 text-green-500" />;
+      } else if (beschreibung.includes("Kein Call notwendig")) {
+        return <PhoneOff className="w-4 h-4 text-gray-500" />;
+      }
+    }
+
     switch (typ) {
       case "status_aenderung":
         return <Activity className="w-4 h-4 text-blue-500" />;
       case "call_notwendig_aenderung":
-        return <AlertCircle className="w-4 h-4 text-orange-500" />;
+        return <Phone className="w-4 h-4 text-orange-500" />;
       case "call_notiz":
         return <PhoneCall className="w-4 h-4 text-green-500" />;
       case "notiz":
@@ -1119,6 +1131,35 @@ export default function Verwaltung() {
   const getInteressentName = (interessentId: string) => {
     const interessent = interessenten.find(i => i.id === interessentId);
     return interessent?.unternehmensname || "Unbekannt";
+  };
+
+  const handleRefresh = async () => {
+    const currentUser = (await supabase.auth.getUser()).data.user;
+    if (!currentUser) return;
+    
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        fetchInteressenten(currentUser),
+        loadAktivitaeten(currentUser),
+        fetchNischen(currentUser),
+        loadStatusSettings(),
+      ]);
+      
+      toast({
+        title: "Aktualisiert",
+        description: "Alle Daten wurden erfolgreich aktualisiert",
+      });
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+      toast({
+        title: "Fehler",
+        description: "Daten konnten nicht aktualisiert werden",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const loadStatusSettings = async () => {
@@ -1422,7 +1463,7 @@ export default function Verwaltung() {
             ) : (
               <div>
                 {aktivitaeten.map((aktivitaet, index) => {
-                  const ActivityIcon = getActivityIcon(aktivitaet.aktivitaets_typ);
+                  const ActivityIcon = getActivityIcon(aktivitaet.aktivitaets_typ, aktivitaet.beschreibung);
                   const interessentName = getInteressentName(aktivitaet.interessent_id);
                   const timestamp = format(new Date(aktivitaet.created_at), "dd.MM.yyyy HH:mm", { locale: de });
                   
@@ -1448,25 +1489,36 @@ export default function Verwaltung() {
         </CardContent>
       </Card>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-        <Input
-          type="text"
-          placeholder="Nach Kontaktdaten suchen..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 pr-10"
-        />
-        {searchTerm && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
-            onClick={() => setSearchTerm("")}
-          >
-            <X className="w-4 h-4" />
-          </Button>
-        )}
+      <div className="flex items-center gap-2 max-w-md">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+          <Input
+            type="text"
+            placeholder="Nach Kontaktdaten suchen..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 pr-10"
+          />
+          {searchTerm && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+              onClick={() => setSearchTerm("")}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          title="Daten aktualisieren"
+        >
+          <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+        </Button>
       </div>
 
       <div className="overflow-x-auto">
