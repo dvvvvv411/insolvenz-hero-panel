@@ -14,7 +14,7 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Phone, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings, X, Edit } from "lucide-react";
+import { Plus, Phone, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings, X, Edit, Search } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -186,6 +186,7 @@ export default function Verwaltung() {
   const [isStatusReorderOpen, setIsStatusReorderOpen] = useState(false);
   const [statusSettings, setStatusSettings] = useState<StatusSetting[]>([]);
   const [newStatusName, setNewStatusName] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
   // Helper functions for status settings
@@ -976,6 +977,23 @@ export default function Verwaltung() {
     });
   };
 
+  const getFilteredInteressenten = () => {
+    const sorted = getSortedInteressenten();
+    
+    if (!searchTerm.trim()) {
+      return sorted;
+    }
+
+    const term = searchTerm.toLowerCase();
+    return sorted.filter(interessent => 
+      interessent.unternehmensname.toLowerCase().includes(term) ||
+      interessent.ansprechpartner.toLowerCase().includes(term) ||
+      interessent.email.toLowerCase().includes(term) ||
+      interessent.telefonnummer.toLowerCase().includes(term) ||
+      (interessent.mobilfunknummer?.toLowerCase().includes(term))
+    );
+  };
+
   const loadStatusSettings = async () => {
     try {
       // First run migration to move any existing data to the new system
@@ -1259,6 +1277,27 @@ export default function Verwaltung() {
         </div>
       </div>
 
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+        <Input
+          type="text"
+          placeholder="Nach Kontaktdaten suchen..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10 pr-10"
+        />
+        {searchTerm && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+            onClick={() => setSearchTerm("")}
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
+
       <div className="overflow-x-auto">
         <Table className="text-sm">
           <TableHeader>
@@ -1274,7 +1313,7 @@ export default function Verwaltung() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {getSortedInteressenten().map((interessent) => (
+            {getFilteredInteressenten().map((interessent) => (
               <TableRow key={interessent.id} className={interessent.call_notwendig === "Call notwendig" ? "bg-accent/50" : ""}>
                 <TableCell className="px-2 py-2">
                   <div className="space-y-1">
