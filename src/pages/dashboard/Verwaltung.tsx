@@ -1111,27 +1111,27 @@ export default function Verwaltung() {
     // Check for call status changes based on description
     if (typ === "call_notwendig_aenderung" && beschreibung) {
       if (beschreibung.includes("Call notwendig")) {
-        return <Phone className="w-4 h-4 text-orange-500" />;
+        return <Phone className="w-6 h-6 text-orange-500" />;
       } else if (beschreibung.includes("Call erledigt")) {
-        return <Phone className="w-4 h-4 text-green-500" />;
+        return <Phone className="w-6 h-6 text-green-500" />;
       } else if (beschreibung.includes("Kein Call notwendig")) {
-        return <PhoneOff className="w-4 h-4 text-gray-500" />;
+        return <PhoneOff className="w-6 h-6 text-gray-500" />;
       }
     }
 
     switch (typ) {
       case "status_aenderung":
-        return <Activity className="w-4 h-4 text-blue-500" />;
+        return <Activity className="w-6 h-6 text-blue-500" />;
       case "call_notwendig_aenderung":
-        return <Phone className="w-4 h-4 text-orange-500" />;
+        return <Phone className="w-6 h-6 text-orange-500" />;
       case "call_notiz":
-        return <PhoneCall className="w-4 h-4 text-green-500" />;
+        return <PhoneCall className="w-6 h-6 text-green-500" />;
       case "notiz":
-        return <MessageSquare className="w-4 h-4 text-purple-500" />;
+        return <MessageSquare className="w-6 h-6 text-purple-500" />;
       case "email_screenshot":
-        return <Mail className="w-4 h-4 text-cyan-500" />;
+        return <Mail className="w-6 h-6 text-cyan-500" />;
       default:
-        return <Activity className="w-4 h-4 text-gray-500" />;
+        return <Activity className="w-6 h-6 text-gray-500" />;
     }
   };
 
@@ -1472,9 +1472,9 @@ export default function Verwaltung() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <ScrollArea className="h-[300px]">
+          <ScrollArea className="h-[400px]">
             {aktivitaeten.length === 0 ? (
-              <div className="text-center text-gray-400 py-8 font-mono text-sm">
+              <div className="text-center text-gray-400 py-8 font-mono text-base">
                 Noch keine Aktivitäten vorhanden
               </div>
             ) : (
@@ -1489,12 +1489,12 @@ export default function Verwaltung() {
                   return (
                     <div 
                       key={aktivitaet.id} 
-                      className={`grid grid-cols-[130px_80px_32px_180px_1fr] gap-2 items-center px-4 py-2 font-mono text-sm border-b border-gray-800 hover:bg-gray-800/50 transition-colors ${
+                      className={`grid grid-cols-[150px_100px_40px_200px_1fr] gap-3 items-center px-4 py-4 font-mono text-base border-b border-gray-800 hover:bg-gray-800/50 transition-colors ${
                         index % 2 === 0 ? 'bg-gray-900' : 'bg-gray-850'
                       }`}
                     >
-                      <span className="text-gray-400 text-xs">{timestamp}</span>
-                      <span className={`${userColor} text-xs font-semibold truncate`}>{username}</span>
+                      <span className="text-gray-400 text-sm">{timestamp}</span>
+                      <span className={`${userColor} text-sm font-semibold truncate`}>{username}</span>
                       <div className="flex justify-center">
                         {ActivityIcon}
                       </div>
