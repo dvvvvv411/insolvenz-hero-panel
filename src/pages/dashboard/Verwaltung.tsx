@@ -1475,60 +1475,60 @@ export default function Verwaltung() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Dr. Torsten Alexander Küpper Card */}
-        <Card className="bg-gray-900 border-gray-700">
-          <CardHeader className="border-b border-gray-700">
-            <CardTitle className="text-xl text-gray-100">Dr. Torsten Alexander Küpper</CardTitle>
+        <Card className="bg-white border-gray-300 shadow-lg">
+          <CardHeader className="border-b border-gray-200 pb-6">
+            <CardTitle className="text-4xl text-gray-900 font-black">Dr. Torsten Alexander Küpper</CardTitle>
           </CardHeader>
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex items-start gap-3">
-              <Mail className="w-5 h-5 text-cyan-500 mt-0.5 flex-shrink-0" />
+          <CardContent className="pt-8 space-y-6">
+            <div className="flex items-start gap-4">
+              <Mail className="w-8 h-8 text-cyan-600 mt-1 flex-shrink-0" />
               <div>
-                <p className="text-sm text-gray-400 mb-1">E-Mail</p>
-                <p className="text-base text-gray-100 font-mono">t.kuepper@kbs-kanzlei.de</p>
+                <p className="text-lg text-gray-600 mb-2 font-semibold">E-Mail</p>
+                <p className="text-xl text-gray-900 font-mono font-medium">t.kuepper@kbs-kanzlei.de</p>
               </div>
             </div>
-            <div className="flex items-start gap-3">
-              <FileText className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-4">
+              <FileText className="w-8 h-8 text-blue-600 mt-1 flex-shrink-0" />
               <div>
-                <p className="text-sm text-gray-400 mb-1">Nische</p>
-                <p className="text-base text-gray-100">Metall</p>
+                <p className="text-lg text-gray-600 mb-2 font-semibold">Nische</p>
+                <p className="text-xl text-gray-900 font-medium">Metall</p>
               </div>
             </div>
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-4">
+              <AlertCircle className="w-8 h-8 text-orange-600 mt-1 flex-shrink-0" />
               <div>
-                <p className="text-sm text-gray-400 mb-1">Insolventes Unternehmen</p>
-                <p className="text-base text-gray-100 font-semibold">Marina Technik GmbH</p>
+                <p className="text-lg text-gray-600 mb-2 font-semibold">Insolventes Unternehmen</p>
+                <p className="text-2xl text-gray-900 font-bold">Marina Technik GmbH</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Mark Steh Card */}
-        <Card className="bg-gray-900 border-gray-700">
-          <CardHeader className="border-b border-gray-700">
-            <CardTitle className="text-xl text-gray-100">Mark Steh</CardTitle>
+        <Card className="bg-white border-gray-300 shadow-lg">
+          <CardHeader className="border-b border-gray-200 pb-6">
+            <CardTitle className="text-4xl text-gray-900 font-black">Mark Steh</CardTitle>
           </CardHeader>
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex items-start gap-3">
-              <Mail className="w-5 h-5 text-cyan-500 mt-0.5 flex-shrink-0" />
+          <CardContent className="pt-8 space-y-6">
+            <div className="flex items-start gap-4">
+              <Mail className="w-8 h-8 text-cyan-600 mt-1 flex-shrink-0" />
               <div>
-                <p className="text-sm text-gray-400 mb-1">E-Mail</p>
-                <p className="text-base text-gray-100 font-mono">m.steh@kbs-kanzlei.de</p>
+                <p className="text-lg text-gray-600 mb-2 font-semibold">E-Mail</p>
+                <p className="text-xl text-gray-900 font-mono font-medium">m.steh@kbs-kanzlei.de</p>
               </div>
             </div>
-            <div className="flex items-start gap-3">
-              <FileText className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-4">
+              <FileText className="w-8 h-8 text-blue-600 mt-1 flex-shrink-0" />
               <div>
-                <p className="text-sm text-gray-400 mb-1">Nischen</p>
-                <p className="text-base text-gray-100">Immo, Energie, Gesundheitswesen</p>
+                <p className="text-lg text-gray-600 mb-2 font-semibold">Nischen</p>
+                <p className="text-xl text-gray-900 font-medium">Immo, Energie, Gesundheitswesen</p>
               </div>
             </div>
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-4">
+              <AlertCircle className="w-8 h-8 text-orange-600 mt-1 flex-shrink-0" />
               <div>
-                <p className="text-sm text-gray-400 mb-1">Insolventes Unternehmen</p>
-                <p className="text-base text-gray-100 font-semibold">TZ-West GmbH</p>
+                <p className="text-lg text-gray-600 mb-2 font-semibold">Insolventes Unternehmen</p>
+                <p className="text-2xl text-gray-900 font-bold">TZ-West GmbH</p>
               </div>
             </div>
           </CardContent>
