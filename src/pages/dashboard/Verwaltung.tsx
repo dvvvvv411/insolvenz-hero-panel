@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Phone, PhoneOff, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings, X, Edit, Search, Activity, MessageSquare, PhoneCall, AlertCircle, RefreshCw } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -1461,6 +1462,77 @@ export default function Verwaltung() {
             </DialogContent>
           </Dialog>
         </div>
+      </div>
+
+      {/* Lawyer Profiles Section */}
+      <Alert className="mb-6 border-destructive/50 bg-destructive/10">
+        <AlertCircle className="h-5 w-5" />
+        <AlertTitle className="font-bold text-lg">Wichtiger Hinweis</AlertTitle>
+        <AlertDescription className="text-base font-medium mt-2">
+          UNBEDINGT IM CALL DARAUF ACHTEN, ALS WELCHEN ANWALT DU DICH VORSTELLST! JENACHDEM UM WELCHES INSOLVENTE UNTERNEHMEN ES SICH HANDELT
+        </AlertDescription>
+      </Alert>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        {/* Dr. Torsten Alexander Küpper Card */}
+        <Card className="bg-gray-900 border-gray-700">
+          <CardHeader className="border-b border-gray-700">
+            <CardTitle className="text-xl text-gray-100">Dr. Torsten Alexander Küpper</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <Mail className="w-5 h-5 text-cyan-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm text-gray-400 mb-1">E-Mail</p>
+                <p className="text-base text-gray-100 font-mono">t.kuepper@kbs-kanzlei.de</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <FileText className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm text-gray-400 mb-1">Nische</p>
+                <p className="text-base text-gray-100">Metall</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm text-gray-400 mb-1">Insolventes Unternehmen</p>
+                <p className="text-base text-gray-100 font-semibold">Marina Technik GmbH</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Mark Steh Card */}
+        <Card className="bg-gray-900 border-gray-700">
+          <CardHeader className="border-b border-gray-700">
+            <CardTitle className="text-xl text-gray-100">Mark Steh</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <Mail className="w-5 h-5 text-cyan-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm text-gray-400 mb-1">E-Mail</p>
+                <p className="text-base text-gray-100 font-mono">m.steh@kbs-kanzlei.de</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <FileText className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm text-gray-400 mb-1">Nischen</p>
+                <p className="text-base text-gray-100">Immo, Energie, Gesundheitswesen</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm text-gray-400 mb-1">Insolventes Unternehmen</p>
+                <p className="text-base text-gray-100 font-semibold">TZ-West GmbH</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Activity Log Card */}
