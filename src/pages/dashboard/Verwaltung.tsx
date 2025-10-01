@@ -77,6 +77,7 @@ interface Aktivitaet {
   neuer_wert?: string;
   beschreibung: string;
   created_at: string;
+  user_email?: string;
 }
 
 interface NischenDetails {
@@ -1097,7 +1098,13 @@ export default function Verwaltung() {
       return;
     }
 
-    setAktivitaeten(data || []);
+    // Add user email to each activity (since RLS filters to current user, all activities are from current user)
+    const aktivitaetenWithEmails = (data || []).map(aktivitaet => ({
+      ...aktivitaet,
+      user_email: user.email
+    }));
+
+    setAktivitaeten(aktivitaetenWithEmails);
   };
 
   const getActivityIcon = (typ: string, beschreibung?: string) => {
@@ -1131,6 +1138,16 @@ export default function Verwaltung() {
   const getInteressentName = (interessentId: string) => {
     const interessent = interessenten.find(i => i.id === interessentId);
     return interessent?.unternehmensname || "Unbekannt";
+  };
+
+  const getUsernameFromEmail = (email?: string): string => {
+    if (!email) return "unknown";
+    return email.split("@")[0];
+  };
+
+  const getUserColor = (email?: string): string => {
+    const username = getUsernameFromEmail(email);
+    return username === "admin" ? "text-red-400" : "text-cyan-400";
   };
 
   const handleRefresh = async () => {
@@ -1466,15 +1483,18 @@ export default function Verwaltung() {
                   const ActivityIcon = getActivityIcon(aktivitaet.aktivitaets_typ, aktivitaet.beschreibung);
                   const interessentName = getInteressentName(aktivitaet.interessent_id);
                   const timestamp = format(new Date(aktivitaet.created_at), "dd.MM.yyyy HH:mm", { locale: de });
+                  const username = getUsernameFromEmail(aktivitaet.user_email);
+                  const userColor = getUserColor(aktivitaet.user_email);
                   
                   return (
                     <div 
                       key={aktivitaet.id} 
-                      className={`grid grid-cols-[130px_32px_180px_1fr] gap-2 items-center px-4 py-2 font-mono text-sm border-b border-gray-800 hover:bg-gray-800/50 transition-colors ${
+                      className={`grid grid-cols-[130px_80px_32px_180px_1fr] gap-2 items-center px-4 py-2 font-mono text-sm border-b border-gray-800 hover:bg-gray-800/50 transition-colors ${
                         index % 2 === 0 ? 'bg-gray-900' : 'bg-gray-850'
                       }`}
                     >
                       <span className="text-gray-400 text-xs">{timestamp}</span>
+                      <span className={`${userColor} text-xs font-semibold truncate`}>{username}</span>
                       <div className="flex justify-center">
                         {ActivityIcon}
                       </div>
