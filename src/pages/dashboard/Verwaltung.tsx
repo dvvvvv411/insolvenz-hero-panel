@@ -1141,6 +1141,31 @@ export default function Verwaltung() {
     return interessent?.unternehmensname || "Unbekannt";
   };
 
+  const getInteressentAnsprechpartner = (interessentId: string) => {
+    const interessent = interessenten.find(i => i.id === interessentId);
+    return interessent?.ansprechpartner || "Unbekannt";
+  };
+
+  const handleUnternehmensnameClick = (unternehmensname: string) => {
+    setSearchTerm(unternehmensname);
+    // Scroll to search field
+    const searchInput = document.querySelector('input[placeholder*="Kontaktdaten"]') as HTMLInputElement;
+    if (searchInput) {
+      searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      searchInput.focus();
+    }
+  };
+
+  const handleAnsprechpartnerClick = (ansprechpartner: string) => {
+    setSearchTerm(ansprechpartner);
+    // Scroll to search field
+    const searchInput = document.querySelector('input[placeholder*="Kontaktdaten"]') as HTMLInputElement;
+    if (searchInput) {
+      searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      searchInput.focus();
+    }
+  };
+
   const getUsernameFromEmail = (email?: string): string => {
     if (!email) return "unknown";
     return email.split("@")[0];
@@ -1554,6 +1579,7 @@ export default function Verwaltung() {
                 {aktivitaeten.map((aktivitaet, index) => {
                   const ActivityIcon = getActivityIcon(aktivitaet.aktivitaets_typ, aktivitaet.beschreibung);
                   const interessentName = getInteressentName(aktivitaet.interessent_id);
+                  const ansprechpartner = getInteressentAnsprechpartner(aktivitaet.interessent_id);
                   const timestamp = format(new Date(aktivitaet.created_at), "dd.MM.yyyy HH:mm", { locale: de });
                   const username = getUsernameFromEmail(aktivitaet.user_email);
                   const userColor = getUserColor(aktivitaet.user_email);
@@ -1561,7 +1587,7 @@ export default function Verwaltung() {
                   return (
                     <div 
                       key={aktivitaet.id} 
-                      className={`grid grid-cols-[150px_100px_40px_200px_1fr] gap-3 items-center px-4 py-4 font-mono text-base border-b border-gray-800 hover:bg-gray-800/50 transition-colors ${
+                      className={`grid grid-cols-[150px_100px_40px_200px_1fr_auto] gap-3 items-center px-4 py-4 font-mono text-base border-b border-gray-800 hover:bg-gray-800/50 transition-colors ${
                         index % 2 === 0 ? 'bg-gray-900' : 'bg-gray-850'
                       }`}
                     >
@@ -1570,8 +1596,21 @@ export default function Verwaltung() {
                       <div className="flex justify-center">
                         {ActivityIcon}
                       </div>
-                      <span className="text-gray-200 font-medium truncate">{interessentName}</span>
+                      <button
+                        onClick={() => handleUnternehmensnameClick(interessentName)}
+                        className="text-gray-200 font-medium truncate text-left hover:text-blue-400 hover:underline transition-colors cursor-pointer"
+                        title="Klicken um zu suchen"
+                      >
+                        {interessentName}
+                      </button>
                       <span className="text-gray-300">{aktivitaet.beschreibung}</span>
+                      <button
+                        onClick={() => handleAnsprechpartnerClick(ansprechpartner)}
+                        className="text-gray-400 text-sm hover:text-blue-400 hover:underline transition-colors cursor-pointer whitespace-nowrap"
+                        title="Klicken um zu suchen"
+                      >
+                        {ansprechpartner}
+                      </button>
                     </div>
                   );
                 })}
