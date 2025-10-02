@@ -14,7 +14,7 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Phone, PhoneOff, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings, X, Edit, Search, Activity, MessageSquare, PhoneCall, AlertCircle, RefreshCw } from "lucide-react";
+import { Plus, Phone, PhoneOff, PhoneMissed, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings, X, Edit, Search, Activity, MessageSquare, PhoneCall, AlertCircle, RefreshCw } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -150,7 +150,8 @@ const getStatusOrderMap = () => {
 
 const callOptions = [
   "Kein Call notwendig",
-  "Call notwendig", 
+  "Call notwendig",
+  "Nicht erreicht",
   "Call erledigt"
 ];
 
@@ -1053,9 +1054,17 @@ export default function Verwaltung() {
     const statusOrderMap = getStatusOrderMap();
 
     return filtered.sort((a, b) => {
-      // Call notwendig has highest priority
-      if (a.call_notwendig === "Call notwendig" && b.call_notwendig !== "Call notwendig") return -1;
-      if (b.call_notwendig === "Call notwendig" && a.call_notwendig !== "Call notwendig") return 1;
+      // Priorität: Call notwendig > Nicht erreicht > Rest
+      const callPriority: Record<string, number> = {
+        "Call notwendig": 0,
+        "Nicht erreicht": 1,
+        "Kein Call notwendig": 2,
+        "Call erledigt": 2
+      };
+
+      const priorityA = callPriority[a.call_notwendig] ?? 3;
+      const priorityB = callPriority[b.call_notwendig] ?? 3;
+      if (priorityA !== priorityB) return priorityA - priorityB;
 
       // Then by status order
       const statusA = statusOrderMap[a.status] || 999;
@@ -1113,6 +1122,8 @@ export default function Verwaltung() {
     if (typ === "call_notwendig_aenderung" && beschreibung) {
       if (beschreibung.includes("Call notwendig")) {
         return <Phone className="w-6 h-6 text-orange-500" />;
+      } else if (beschreibung.includes("Nicht erreicht")) {
+        return <PhoneMissed className="w-6 h-6 text-amber-500" />;
       } else if (beschreibung.includes("Call erledigt")) {
         return <Phone className="w-6 h-6 text-green-500" />;
       } else if (beschreibung.includes("Kein Call notwendig")) {
@@ -1668,7 +1679,16 @@ export default function Verwaltung() {
           </TableHeader>
           <TableBody>
             {getFilteredInteressenten().map((interessent) => (
-              <TableRow key={interessent.id} className={interessent.call_notwendig === "Call notwendig" ? "bg-accent/50" : ""}>
+              <TableRow 
+                key={interessent.id} 
+                className={
+                  interessent.call_notwendig === "Call notwendig" 
+                    ? "bg-accent/50" 
+                    : interessent.call_notwendig === "Nicht erreicht"
+                    ? "bg-amber-100/50"
+                    : ""
+                }
+              >
                 <TableCell className="px-2 py-2">
                   <div className="space-y-1">
                     <div className="font-medium flex items-center gap-2">
