@@ -15,7 +15,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Phone, PhoneOff, PhoneMissed, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings, X, Edit, Search, Activity, MessageSquare, PhoneCall, AlertCircle, RefreshCw } from "lucide-react";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -205,7 +204,6 @@ export default function Verwaltung() {
   const [newStatusName, setNewStatusName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [aktivitaeten, setAktivitaeten] = useState<Aktivitaet[]>([]);
-  const [selectedUserType, setSelectedUserType] = useState<"admin" | "caller">("caller");
   const { toast } = useToast();
 
   // Helper functions for status settings
@@ -1190,25 +1188,7 @@ export default function Verwaltung() {
 
   const getUserColor = (email?: string): string => {
     const username = getUsernameFromEmail(email);
-    
-    // Caller (nicht-admin) wird türkis hervorgehoben
-    if (username !== "admin" && selectedUserType === "caller") {
-      return "text-cyan-400";
-    } 
-    // Admin wird rot hervorgehoben
-    else if (username === "admin" && selectedUserType === "admin") {
-      return "text-red-400";
-    }
-    
-    // Default: Grau für nicht-ausgewählte User
-    return "text-gray-500";
-  };
-
-  const handleUserTypeChange = (value: string) => {
-    if (value === "admin" || value === "caller") {
-      setSelectedUserType(value);
-      localStorage.setItem('selectedUserType', value);
-    }
+    return username === "admin" ? "text-red-400" : "text-cyan-400";
   };
 
   const handleRefresh = async () => {
@@ -1252,13 +1232,6 @@ export default function Verwaltung() {
       console.error('Error loading status settings:', error);
     }
   };
-
-  useEffect(() => {
-    const savedUserType = localStorage.getItem('selectedUserType');
-    if (savedUserType === "admin" || savedUserType === "caller") {
-      setSelectedUserType(savedUserType);
-    }
-  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -1605,32 +1578,10 @@ export default function Verwaltung() {
       {/* Activity Log Card */}
       <Card className="mb-6 bg-gray-900 border-gray-700">
         <CardHeader className="pb-3 border-b border-gray-700">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2 text-gray-100">
-              <Activity className="w-5 h-5" />
-              Aktivitäts-Protokoll
-            </CardTitle>
-            
-            <ToggleGroup 
-              type="single" 
-              value={selectedUserType}
-              onValueChange={handleUserTypeChange}
-              className="bg-gray-800 rounded-md p-1"
-            >
-              <ToggleGroupItem 
-                value="admin" 
-                className="data-[state=on]:bg-red-500/20 data-[state=on]:text-red-400 px-3 py-1 text-sm"
-              >
-                Admin
-              </ToggleGroupItem>
-              <ToggleGroupItem 
-                value="caller" 
-                className="data-[state=on]:bg-cyan-500/20 data-[state=on]:text-cyan-400 px-3 py-1 text-sm"
-              >
-                Caller
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
+          <CardTitle className="text-lg flex items-center gap-2 text-gray-100">
+            <Activity className="w-5 h-5" />
+            Aktivitäts-Protokoll
+          </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <ScrollArea className="h-[400px]">
