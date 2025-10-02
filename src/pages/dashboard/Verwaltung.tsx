@@ -1114,7 +1114,11 @@ export default function Verwaltung() {
       user_email: user.email
     }));
 
-    setAktivitaeten(aktivitaetenWithEmails);
+    // Filter out "Email-Screenshot von URL hinzugefügt" messages
+    const filteredAktivitaeten = aktivitaetenWithEmails.filter(
+      aktivitaet => aktivitaet.beschreibung !== "Email-Screenshot von URL hinzugefügt"
+    );
+    setAktivitaeten(filteredAktivitaeten);
   };
 
   const getActivityIcon = (typ: string, beschreibung?: string) => {
