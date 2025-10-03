@@ -205,7 +205,8 @@ export default function Verwaltung() {
   const [searchTerm, setSearchTerm] = useState("");
   const [aktivitaeten, setAktivitaeten] = useState<Aktivitaet[]>([]);
   const [isActivityLogCollapsed, setIsActivityLogCollapsed] = useState(false);
-  const [unreadItems, setUnreadItems] = useState<Record<string, {hasUnreadNotiz: boolean, hasUnreadCall: boolean}>>({});
+  const [unreadNotizIds, setUnreadNotizIds] = useState<Set<string>>(new Set());
+  const [unreadCallIds, setUnreadCallIds] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   // Dynamic niches for Mark Steh (all except "Metall")
@@ -384,53 +385,56 @@ export default function Verwaltung() {
   };
 
   const loadUnreadItems = async (userId: string) => {
-    const { data } = await supabase
-      .from('interessenten_unread_items')
-      .select('*')
-      .eq('user_id', userId);
+    const { data: notizen } = await supabase
+      .from('unread_items')
+      .select('item_id')
+      .eq('user_id', userId)
+      .eq('item_type', 'notiz');
     
-    if (data) {
-      const items: Record<string, any> = {};
-      data.forEach(item => {
-        items[item.interessent_id] = {
-          hasUnreadNotiz: item.has_unread_notiz,
-          hasUnreadCall: item.has_unread_call
-        };
-      });
-      setUnreadItems(items);
-    }
+    const { data: calls } = await supabase
+      .from('unread_items')
+      .select('item_id')
+      .eq('user_id', userId)
+      .eq('item_type', 'call');
+    
+    setUnreadNotizIds(new Set(notizen?.map(n => n.item_id) || []));
+    setUnreadCallIds(new Set(calls?.map(c => c.item_id) || []));
   };
 
-  const markNotizAsRead = async (interessentId: string) => {
+  const markNotizAsRead = async (notizId: string) => {
     const { data: user } = await supabase.auth.getUser();
     if (!user.user) return;
     
     await supabase
-      .from('interessenten_unread_items')
-      .upsert({
-        interessent_id: interessentId,
-        user_id: user.user.id,
-        has_unread_notiz: false,
-        has_unread_call: unreadItems[interessentId]?.hasUnreadCall || false
-      }, { onConflict: 'interessent_id,user_id' });
+      .from('unread_items')
+      .delete()
+      .eq('user_id', user.user.id)
+      .eq('item_id', notizId)
+      .eq('item_type', 'notiz');
     
-    await loadUnreadItems(user.user.id);
+    setUnreadNotizIds(prev => {
+      const next = new Set(prev);
+      next.delete(notizId);
+      return next;
+    });
   };
 
-  const markCallAsRead = async (interessentId: string) => {
+  const markCallAsRead = async (callId: string) => {
     const { data: user } = await supabase.auth.getUser();
     if (!user.user) return;
     
     await supabase
-      .from('interessenten_unread_items')
-      .upsert({
-        interessent_id: interessentId,
-        user_id: user.user.id,
-        has_unread_notiz: unreadItems[interessentId]?.hasUnreadNotiz || false,
-        has_unread_call: false
-      }, { onConflict: 'interessent_id,user_id' });
+      .from('unread_items')
+      .delete()
+      .eq('user_id', user.user.id)
+      .eq('item_id', callId)
+      .eq('item_type', 'call');
     
-    await loadUnreadItems(user.user.id);
+    setUnreadCallIds(prev => {
+      const next = new Set(prev);
+      next.delete(callId);
+      return next;
+    });
   };
 
   const copyToClipboard = async (text: string) => {
@@ -649,14 +653,16 @@ export default function Verwaltung() {
     const { data: user } = await supabase.auth.getUser();
     if (!user.user) return;
 
-    const { error } = await supabase
+    const { data: insertedCall, error } = await supabase
       .from("interessenten_calls")
       .insert({
         interessent_id: selectedInteressent.id,
         user_id: user.user.id,
         typ,
         notiz: typ === "Call" ? callNotiz : null,
-      });
+      })
+      .select()
+      .single();
 
     if (error) {
       toast({
@@ -675,14 +681,18 @@ export default function Verwaltung() {
     await logActivity(selectedInteressent.id, "call_notiz", beschreibung);
 
     // Mark as unread for current user
-    await supabase
-      .from('interessenten_unread_items')
-      .upsert({
-        interessent_id: selectedInteressent.id,
-        user_id: user.user.id,
-        has_unread_call: true,
-        has_unread_notiz: unreadItems[selectedInteressent.id]?.hasUnreadNotiz || false
-      }, { onConflict: 'interessent_id,user_id' });
+    if (insertedCall) {
+      await supabase
+        .from('unread_items')
+        .insert({
+          user_id: user.user.id,
+          item_id: insertedCall.id,
+          item_type: 'call',
+          interessent_id: selectedInteressent.id
+        });
+      
+      setUnreadCallIds(prev => new Set(prev).add(insertedCall.id));
+    }
 
     toast({
       title: "Erfolg",
@@ -693,7 +703,6 @@ export default function Verwaltung() {
     setCallNotiz("");
     fetchInteressenten(currentUser);
     loadAktivitaeten(currentUser);
-    loadUnreadItems(user.user.id);
   };
 
   const addNotiz = async () => {
@@ -702,13 +711,15 @@ export default function Verwaltung() {
     const { data: user } = await supabase.auth.getUser();
     if (!user.user) return;
 
-    const { error } = await supabase
+    const { data: insertedNotiz, error } = await supabase
       .from("interessenten_notizen")
       .insert({
         interessent_id: selectedInteressent.id,
         user_id: user.user.id,
         notiz: notizText,
-      });
+      })
+      .select()
+      .single();
 
     if (error) {
       toast({
@@ -724,14 +735,18 @@ export default function Verwaltung() {
     await logActivity(selectedInteressent.id, "notiz", `Notiz hinzugefügt: ${notizPreview}`);
 
     // Mark as unread for current user
-    await supabase
-      .from('interessenten_unread_items')
-      .upsert({
-        interessent_id: selectedInteressent.id,
-        user_id: user.user.id,
-        has_unread_notiz: true,
-        has_unread_call: unreadItems[selectedInteressent.id]?.hasUnreadCall || false
-      }, { onConflict: 'interessent_id,user_id' });
+    if (insertedNotiz) {
+      await supabase
+        .from('unread_items')
+        .insert({
+          user_id: user.user.id,
+          item_id: insertedNotiz.id,
+          item_type: 'notiz',
+          interessent_id: selectedInteressent.id
+        });
+      
+      setUnreadNotizIds(prev => new Set(prev).add(insertedNotiz.id));
+    }
 
     toast({
       title: "Erfolg",
@@ -742,7 +757,6 @@ export default function Verwaltung() {
     setNotizText("");
     fetchInteressenten(currentUser);
     loadAktivitaeten(currentUser);
-    loadUnreadItems(user.user.id);
   };
 
   const updateStatus = async (interessentId: string, newStatus: string) => {
@@ -1898,11 +1912,15 @@ export default function Verwaltung() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 px-2 pr-6 text-xs"
+                                className={`h-8 px-2 pr-6 text-xs ${
+                                  unreadCallIds.has(call.id) 
+                                    ? 'bg-cyan-500 hover:bg-cyan-600 text-white border-cyan-500' 
+                                    : ''
+                                }`}
                                 onClick={() => {
                                   setViewCall(call);
                                   setIsCallViewerOpen(true);
-                                  markCallAsRead(interessent.id);
+                                  markCallAsRead(call.id);
                                 }}
                               >
                                 {call.typ.replace("Mailbox", "MB")} {getCallTypeNumber(call, callVerlauf[interessent.id], index)}
@@ -1928,7 +1946,7 @@ export default function Verwaltung() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className={`h-8 px-2 ${unreadItems[interessent.id]?.hasUnreadCall ? 'bg-cyan-500 hover:bg-cyan-600 text-white border-cyan-500' : ''}`}
+                        className="h-8 px-2"
                         onClick={() => {
                           setSelectedInteressent(interessent);
                           setIsCallDialogOpen(true);
@@ -1956,11 +1974,15 @@ export default function Verwaltung() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-8 px-2 pr-6 text-xs"
+                            className={`h-8 px-2 pr-6 text-xs ${
+                              unreadNotizIds.has(notiz.id) 
+                                ? 'bg-cyan-500 hover:bg-cyan-600 text-white border-cyan-500' 
+                                : ''
+                            }`}
                             onClick={() => {
                               setViewNotiz(notiz);
                               setIsNotizViewerOpen(true);
-                              markNotizAsRead(interessent.id);
+                              markNotizAsRead(notiz.id);
                             }}
                           >
                             Notiz {index + 1}
@@ -1985,7 +2007,7 @@ export default function Verwaltung() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className={`h-8 px-2 ${unreadItems[interessent.id]?.hasUnreadNotiz ? 'bg-cyan-500 hover:bg-cyan-600 text-white border-cyan-500' : ''}`}
+                        className="h-8 px-2"
                         onClick={() => {
                           setSelectedInteressent(interessent);
                           setIsNotizDialogOpen(true);
@@ -2470,25 +2492,32 @@ export default function Verwaltung() {
                           if (value === "Nicht erreicht") {
                             const { data: user } = await supabase.auth.getUser();
                             if (user.user) {
-                              await supabase.from("interessenten_calls").insert({
-                                interessent_id: selectedInteressent.id,
-                                user_id: user.user.id,
-                                typ: "MB Meldung",
-                                notiz: "Automatisch hinzugefügt durch 'Nicht erreicht' Status"
-                              });
+                              const { data: insertedCall } = await supabase
+                                .from("interessenten_calls")
+                                .insert({
+                                  interessent_id: selectedInteressent.id,
+                                  user_id: user.user.id,
+                                  typ: "MB Meldung",
+                                  notiz: "Automatisch hinzugefügt durch 'Nicht erreicht' Status"
+                                })
+                                .select()
+                                .single();
                               
                               await logActivity(selectedInteressent.id, "call_notiz", "MB Meldung automatisch hinzugefügt (Nicht erreicht)");
                               
-                              await supabase.from('interessenten_unread_items').upsert({
-                                interessent_id: selectedInteressent.id,
-                                user_id: user.user.id,
-                                has_unread_call: true,
-                                has_unread_notiz: unreadItems[selectedInteressent.id]?.hasUnreadNotiz || false
-                              }, { onConflict: 'interessent_id,user_id' });
+                              if (insertedCall) {
+                                await supabase.from('unread_items').insert({
+                                  user_id: user.user.id,
+                                  item_id: insertedCall.id,
+                                  item_type: 'call',
+                                  interessent_id: selectedInteressent.id
+                                });
+                                
+                                setUnreadCallIds(prev => new Set(prev).add(insertedCall.id));
+                              }
                               
                               fetchInteressenten(user.user);
                               loadAktivitaeten(user.user);
-                              loadUnreadItems(user.user.id);
                               
                               toast({ title: "MB Meldung hinzugefügt", description: "Automatisch durch 'Nicht erreicht' Status" });
                             }
