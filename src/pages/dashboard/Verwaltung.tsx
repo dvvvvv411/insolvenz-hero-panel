@@ -1,3 +1,4 @@
+// Verwaltung Component - Manage Interessenten
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageMeta } from "@/components/PageMeta";
