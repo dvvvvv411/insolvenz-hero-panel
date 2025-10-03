@@ -385,7 +385,6 @@ export default function Verwaltung() {
     }
   };
 
-  // Load unread items for notifications
   const loadUnreadItems = async (userId: string) => {
     const { data: notizen } = await supabase
       .from('unread_items')
@@ -1703,9 +1702,8 @@ export default function Verwaltung() {
                   
                   return (
                     <div 
-                      key={aktivitaet.id}
-                      style={{ display: 'grid', gridTemplateColumns: '150px 200px 40px 200px minmax(0, 1fr)' }}
-                      className={`gap-3 items-start px-4 py-4 w-full font-mono text-base border-b hover:bg-gray-800/50 transition-colors ${
+                      key={aktivitaet.id} 
+                      className={`grid grid-cols-[150px_200px_40px_200px_1fr] gap-3 items-center px-4 py-4 font-mono text-base border-b hover:bg-gray-800/50 transition-colors ${
                         isCallNotiz 
                           ? 'bg-cyan-900/30 border-cyan-700' 
                           : isNormalNotiz
@@ -1731,7 +1729,7 @@ export default function Verwaltung() {
                       >
                         {interessentName}
                       </button>
-                      <span className={`${isCallNotiz ? "text-cyan-400" : isNormalNotiz ? "text-purple-400" : "text-gray-300"} min-w-0 break-words word-break whitespace-normal overflow-wrap-anywhere`}>{aktivitaet.beschreibung}</span>
+                      <span className={isCallNotiz ? "text-cyan-400" : isNormalNotiz ? "text-purple-400" : "text-gray-300"}>{aktivitaet.beschreibung}</span>
                     </div>
                   );
                 })}
