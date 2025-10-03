@@ -1731,7 +1731,7 @@ export default function Verwaltung() {
                       >
                         {interessentName}
                       </button>
-                      <span className={`${isCallNotiz ? "text-cyan-400" : isNormalNotiz ? "text-purple-400" : "text-gray-300"} break-words word-break whitespace-normal overflow-wrap-anywhere`}>{aktivitaet.beschreibung}</span>
+                      <span className={`${isCallNotiz ? "text-cyan-400" : isNormalNotiz ? "text-purple-400" : "text-gray-300"} min-w-0 break-words word-break whitespace-normal overflow-wrap-anywhere`}>{aktivitaet.beschreibung}</span>
                     </div>
                   );
                 })}
