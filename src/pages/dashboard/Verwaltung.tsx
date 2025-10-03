@@ -2532,11 +2532,7 @@ export default function Verwaltung() {
                             }
                           }
                           
-                          if (value === "Call notwendig") {
-                            setEditingCallGrund(selectedInteressent.call_notwendig_grund || "");
-                          } else {
-                            updateCallNotwendig(selectedInteressent.id, value, "");
-                          }
+                          updateCallNotwendig(selectedInteressent.id, value, "");
                         }}
                       >
                         <SelectTrigger className="w-full">
@@ -2551,22 +2547,6 @@ export default function Verwaltung() {
                         </SelectContent>
                       </Select>
                     </div>
-                    {(editingCallNotwendig === "Call notwendig" || selectedInteressent.call_notwendig === "Call notwendig") && (
-                      <div>
-                        <Label className="text-sm font-medium text-muted-foreground">Grund für Call</Label>
-                        <Textarea
-                          value={editingCallGrund || selectedInteressent.call_notwendig_grund || ""}
-                          onChange={(e) => setEditingCallGrund(e.target.value)}
-                          onBlur={() => {
-                            if (editingCallNotwendig === "Call notwendig") {
-                              updateCallNotwendig(selectedInteressent.id, "Call notwendig", editingCallGrund);
-                            }
-                          }}
-                          placeholder="Grund für Call eingeben..."
-                          className="min-h-[60px]"
-                        />
-                      </div>
-                    )}
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground">Erstellt am</Label>
                       <div className="text-base">{format(new Date(selectedInteressent.created_at), "dd.MM.yyyy HH:mm", { locale: de })}</div>
