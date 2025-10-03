@@ -385,6 +385,7 @@ export default function Verwaltung() {
     }
   };
 
+  // Load unread items for notifications
   const loadUnreadItems = async (userId: string) => {
     const { data: notizen } = await supabase
       .from('unread_items')
