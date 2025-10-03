@@ -1697,16 +1697,13 @@ export default function Verwaltung() {
                   const interessentName = getInteressentName(aktivitaet.interessent_id);
                   const ansprechpartner = getInteressentAnsprechpartner(aktivitaet.interessent_id);
                   const timestamp = format(new Date(aktivitaet.created_at), "dd.MM.yyyy HH:mm", { locale: de });
-                  const username = getUsernameFromEmail(aktivitaet.user_email);
-                  const userColor = getUserColor(aktivitaet.user_email);
-                  
                   const isCallNotiz = aktivitaet.beschreibung.includes("Call-Notiz hinzugefügt");
                   const isNormalNotiz = aktivitaet.beschreibung.includes("Notiz hinzugefügt") && !isCallNotiz;
                   
                   return (
                     <div 
                       key={aktivitaet.id} 
-                      className={`grid grid-cols-[150px_100px_40px_200px_1fr_auto] gap-3 items-center px-4 py-4 font-mono text-base border-b hover:bg-gray-800/50 transition-colors ${
+                      className={`grid grid-cols-[150px_200px_40px_200px_1fr] gap-3 items-center px-4 py-4 font-mono text-base border-b hover:bg-gray-800/50 transition-colors ${
                         isCallNotiz 
                           ? 'bg-cyan-900/30 border-cyan-700' 
                           : isNormalNotiz
@@ -1715,7 +1712,13 @@ export default function Verwaltung() {
                       }`}
                     >
                       <span className="text-gray-400 text-sm">{timestamp}</span>
-                      <span className={`${userColor} text-sm font-semibold truncate`}>{username}</span>
+                      <button
+                        onClick={() => handleAnsprechpartnerClick(ansprechpartner)}
+                        className="text-gray-400 text-sm hover:text-blue-400 hover:underline transition-colors cursor-pointer truncate"
+                        title="Klicken um zu suchen"
+                      >
+                        {ansprechpartner}
+                      </button>
                       <div className="flex justify-center">
                         {ActivityIcon}
                       </div>
@@ -1726,14 +1729,7 @@ export default function Verwaltung() {
                       >
                         {interessentName}
                       </button>
-                      <span className={isCallNotiz ? "text-cyan-400" : "text-gray-300"}>{aktivitaet.beschreibung}</span>
-                      <button
-                        onClick={() => handleAnsprechpartnerClick(ansprechpartner)}
-                        className="text-gray-400 text-sm hover:text-blue-400 hover:underline transition-colors cursor-pointer whitespace-nowrap"
-                        title="Klicken um zu suchen"
-                      >
-                        {ansprechpartner}
-                      </button>
+                      <span className={isCallNotiz ? "text-cyan-400" : isNormalNotiz ? "text-purple-400" : "text-gray-300"}>{aktivitaet.beschreibung}</span>
                     </div>
                   );
                 })}
