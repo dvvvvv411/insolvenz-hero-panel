@@ -1599,11 +1599,15 @@ export default function Verwaltung() {
                   const username = getUsernameFromEmail(aktivitaet.user_email);
                   const userColor = getUserColor(aktivitaet.user_email);
                   
+                  const isCallNotiz = aktivitaet.beschreibung.includes("Call-Notiz hinzugefügt");
+                  
                   return (
                     <div 
                       key={aktivitaet.id} 
-                      className={`grid grid-cols-[150px_100px_40px_200px_1fr_auto] gap-3 items-center px-4 py-4 font-mono text-base border-b border-gray-800 hover:bg-gray-800/50 transition-colors ${
-                        index % 2 === 0 ? 'bg-gray-900' : 'bg-gray-850'
+                      className={`grid grid-cols-[150px_100px_40px_200px_1fr_auto] gap-3 items-center px-4 py-4 font-mono text-base border-b hover:bg-gray-800/50 transition-colors ${
+                        isCallNotiz 
+                          ? 'bg-cyan-900/30 border-cyan-700' 
+                          : `border-gray-800 ${index % 2 === 0 ? 'bg-gray-900' : 'bg-gray-850'}`
                       }`}
                     >
                       <span className="text-gray-400 text-sm">{timestamp}</span>
@@ -1618,7 +1622,7 @@ export default function Verwaltung() {
                       >
                         {interessentName}
                       </button>
-                      <span className="text-gray-300">{aktivitaet.beschreibung}</span>
+                      <span className={isCallNotiz ? "text-cyan-400" : "text-gray-300"}>{aktivitaet.beschreibung}</span>
                       <button
                         onClick={() => handleAnsprechpartnerClick(ansprechpartner)}
                         className="text-gray-400 text-sm hover:text-blue-400 hover:underline transition-colors cursor-pointer whitespace-nowrap"
