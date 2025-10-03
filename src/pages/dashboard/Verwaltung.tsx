@@ -1676,19 +1676,25 @@ export default function Verwaltung() {
 
       {/* Activity Log Card */}
       <Card className="mb-6 bg-gray-900 border-gray-700">
-        <CardHeader className="pb-3 border-b border-gray-700">
+        <CardHeader 
+          className="pb-3 border-b border-gray-700 cursor-pointer hover:bg-gray-800/50 transition-colors"
+          onClick={() => setIsActivityLogCollapsed(!isActivityLogCollapsed)}
+        >
           <div className="flex items-center justify-between w-full">
             <CardTitle className="text-lg flex items-center gap-2 text-gray-100">
               <Activity className="w-5 h-5" />
               Aktivitäts-Protokoll
             </CardTitle>
             <Button 
-              variant="ghost" 
+              variant="outline" 
               size="sm"
-              onClick={() => setIsActivityLogCollapsed(!isActivityLogCollapsed)}
-              className="h-8 w-8 p-0"
+              className="h-8 w-8 p-0 border-gray-600 hover:bg-gray-700 hover:border-gray-500"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsActivityLogCollapsed(!isActivityLogCollapsed);
+              }}
             >
-              {isActivityLogCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+              {isActivityLogCollapsed ? <ChevronDown className="w-5 h-5 text-gray-300" /> : <ChevronUp className="w-5 h-5 text-gray-300" />}
             </Button>
           </div>
         </CardHeader>
