@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageMeta } from "@/components/PageMeta";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Phone, PhoneOff, PhoneMissed, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings, X, Edit, Search, Activity, MessageSquare, PhoneCall, AlertCircle, RefreshCw } from "lucide-react";
+import { Plus, Phone, PhoneOff, PhoneMissed, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings, X, Edit, Search, Activity, MessageSquare, PhoneCall, AlertCircle, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -204,7 +204,17 @@ export default function Verwaltung() {
   const [newStatusName, setNewStatusName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [aktivitaeten, setAktivitaeten] = useState<Aktivitaet[]>([]);
+  const [isActivityLogCollapsed, setIsActivityLogCollapsed] = useState(false);
+  const [unreadItems, setUnreadItems] = useState<Record<string, {hasUnreadNotiz: boolean, hasUnreadCall: boolean}>>({});
   const { toast } = useToast();
+
+  // Dynamic niches for Mark Steh (all except "Metall")
+  const markStehNischen = useMemo(() => 
+    nischen
+      .filter(n => n !== "Metall")
+      .join(", "),
+    [nischen]
+  );
 
   // Helper functions for status settings
   const getStatusColor = (status: string): string => {
@@ -371,6 +381,56 @@ export default function Verwaltung() {
       // Update thumbnails progressively
       setThumbnailUrls(prev => ({ ...prev, ...thumbnails }));
     }
+  };
+
+  const loadUnreadItems = async (userId: string) => {
+    const { data } = await supabase
+      .from('interessenten_unread_items')
+      .select('*')
+      .eq('user_id', userId);
+    
+    if (data) {
+      const items: Record<string, any> = {};
+      data.forEach(item => {
+        items[item.interessent_id] = {
+          hasUnreadNotiz: item.has_unread_notiz,
+          hasUnreadCall: item.has_unread_call
+        };
+      });
+      setUnreadItems(items);
+    }
+  };
+
+  const markNotizAsRead = async (interessentId: string) => {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) return;
+    
+    await supabase
+      .from('interessenten_unread_items')
+      .upsert({
+        interessent_id: interessentId,
+        user_id: user.user.id,
+        has_unread_notiz: false,
+        has_unread_call: unreadItems[interessentId]?.hasUnreadCall || false
+      }, { onConflict: 'interessent_id,user_id' });
+    
+    await loadUnreadItems(user.user.id);
+  };
+
+  const markCallAsRead = async (interessentId: string) => {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) return;
+    
+    await supabase
+      .from('interessenten_unread_items')
+      .upsert({
+        interessent_id: interessentId,
+        user_id: user.user.id,
+        has_unread_notiz: unreadItems[interessentId]?.hasUnreadNotiz || false,
+        has_unread_call: false
+      }, { onConflict: 'interessent_id,user_id' });
+    
+    await loadUnreadItems(user.user.id);
   };
 
   const copyToClipboard = async (text: string) => {
@@ -614,6 +674,16 @@ export default function Verwaltung() {
       : `${typ} hinzugefügt`;
     await logActivity(selectedInteressent.id, "call_notiz", beschreibung);
 
+    // Mark as unread for current user
+    await supabase
+      .from('interessenten_unread_items')
+      .upsert({
+        interessent_id: selectedInteressent.id,
+        user_id: user.user.id,
+        has_unread_call: true,
+        has_unread_notiz: unreadItems[selectedInteressent.id]?.hasUnreadNotiz || false
+      }, { onConflict: 'interessent_id,user_id' });
+
     toast({
       title: "Erfolg",
       description: `${typ} wurde hinzugefügt`,
@@ -623,6 +693,7 @@ export default function Verwaltung() {
     setCallNotiz("");
     fetchInteressenten(currentUser);
     loadAktivitaeten(currentUser);
+    loadUnreadItems(user.user.id);
   };
 
   const addNotiz = async () => {
@@ -652,6 +723,16 @@ export default function Verwaltung() {
     const notizPreview = notizText.length > 50 ? notizText.substring(0, 50) + "..." : notizText;
     await logActivity(selectedInteressent.id, "notiz", `Notiz hinzugefügt: ${notizPreview}`);
 
+    // Mark as unread for current user
+    await supabase
+      .from('interessenten_unread_items')
+      .upsert({
+        interessent_id: selectedInteressent.id,
+        user_id: user.user.id,
+        has_unread_notiz: true,
+        has_unread_call: unreadItems[selectedInteressent.id]?.hasUnreadCall || false
+      }, { onConflict: 'interessent_id,user_id' });
+
     toast({
       title: "Erfolg",
       description: "Notiz wurde hinzugefügt",
@@ -661,6 +742,7 @@ export default function Verwaltung() {
     setNotizText("");
     fetchInteressenten(currentUser);
     loadAktivitaeten(currentUser);
+    loadUnreadItems(user.user.id);
   };
 
   const updateStatus = async (interessentId: string, newStatus: string) => {
@@ -1249,7 +1331,8 @@ export default function Verwaltung() {
         fetchNischen(user.user), 
         fetchInteressenten(user.user),
         loadStatusSettings(),
-        loadAktivitaeten(user.user)
+        loadAktivitaeten(user.user),
+        loadUnreadItems(user.user.id)
       ]);
       
       setLoading(false);
@@ -1505,70 +1588,62 @@ export default function Verwaltung() {
       </div>
 
       {/* Lawyer Profiles Section */}
-      <Alert className="mb-6 border-destructive/50 bg-destructive/10">
-        <AlertCircle className="h-5 w-5" />
-        <AlertTitle className="font-bold text-lg">Wichtiger Hinweis</AlertTitle>
-        <AlertDescription className="text-base font-medium mt-2">
-          UNBEDINGT IM CALL DARAUF ACHTEN, ALS WELCHEN ANWALT DU DICH VORSTELLST! JENACHDEM UM WELCHES INSOLVENTE UNTERNEHMEN ES SICH HANDELT
-        </AlertDescription>
-      </Alert>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
         {/* Dr. Torsten Alexander Küpper Card */}
-        <Card className="bg-white border-gray-300 shadow-lg">
-          <CardHeader className="border-b border-gray-200 pb-6">
-            <CardTitle className="text-4xl text-gray-900 font-black">Dr. Torsten Alexander Küpper</CardTitle>
+        <Card className="bg-white border-gray-300 shadow-sm">
+          <CardHeader className="border-b border-gray-200 pb-2">
+            <CardTitle className="text-lg text-gray-900 font-black">Dr. Torsten Alexander Küpper</CardTitle>
           </CardHeader>
-          <CardContent className="pt-8 space-y-6">
-            <div className="flex items-start gap-4">
-              <Mail className="w-8 h-8 text-cyan-600 mt-1 flex-shrink-0" />
+          <CardContent className="pt-3 space-y-2">
+            <div className="flex items-start gap-2">
+              <Mail className="w-4 h-4 text-cyan-600 mt-1 flex-shrink-0" />
               <div>
-                <p className="text-lg text-gray-600 mb-2 font-semibold">E-Mail</p>
-                <p className="text-xl text-gray-900 font-mono font-medium">t.kuepper@kbs-kanzlei.de</p>
+                <p className="text-xs text-gray-600 mb-1 font-semibold">E-Mail</p>
+                <p className="text-sm text-gray-900 font-mono font-medium">t.kuepper@kbs-kanzlei.de</p>
               </div>
             </div>
-            <div className="flex items-start gap-4">
-              <FileText className="w-8 h-8 text-blue-600 mt-1 flex-shrink-0" />
+            <div className="flex items-start gap-2">
+              <FileText className="w-4 h-4 text-blue-600 mt-1 flex-shrink-0" />
               <div>
-                <p className="text-lg text-gray-600 mb-2 font-semibold">Nische</p>
-                <p className="text-xl text-gray-900 font-medium">Metall</p>
+                <p className="text-xs text-gray-600 mb-1 font-semibold">Nische</p>
+                <p className="text-sm text-gray-900 font-medium">Metall</p>
               </div>
             </div>
-            <div className="flex items-start gap-4">
-              <AlertCircle className="w-8 h-8 text-orange-600 mt-1 flex-shrink-0" />
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-orange-600 mt-1 flex-shrink-0" />
               <div>
-                <p className="text-lg text-gray-600 mb-2 font-semibold">Insolventes Unternehmen</p>
-                <p className="text-2xl text-gray-900 font-bold">Marina Technik GmbH</p>
+                <p className="text-xs text-gray-600 mb-1 font-semibold">Insolventes Unternehmen</p>
+                <p className="text-base text-gray-900 font-bold">Marina Technik GmbH</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Mark Steh Card */}
-        <Card className="bg-white border-gray-300 shadow-lg">
-          <CardHeader className="border-b border-gray-200 pb-6">
-            <CardTitle className="text-4xl text-gray-900 font-black">Mark Steh</CardTitle>
+        <Card className="bg-white border-gray-300 shadow-sm">
+          <CardHeader className="border-b border-gray-200 pb-2">
+            <CardTitle className="text-lg text-gray-900 font-black">Mark Steh</CardTitle>
           </CardHeader>
-          <CardContent className="pt-8 space-y-6">
-            <div className="flex items-start gap-4">
-              <Mail className="w-8 h-8 text-cyan-600 mt-1 flex-shrink-0" />
+          <CardContent className="pt-3 space-y-2">
+            <div className="flex items-start gap-2">
+              <Mail className="w-4 h-4 text-cyan-600 mt-1 flex-shrink-0" />
               <div>
-                <p className="text-lg text-gray-600 mb-2 font-semibold">E-Mail</p>
-                <p className="text-xl text-gray-900 font-mono font-medium">m.steh@kbs-kanzlei.de</p>
+                <p className="text-xs text-gray-600 mb-1 font-semibold">E-Mail</p>
+                <p className="text-sm text-gray-900 font-mono font-medium">m.steh@kbs-kanzlei.de</p>
               </div>
             </div>
-            <div className="flex items-start gap-4">
-              <FileText className="w-8 h-8 text-blue-600 mt-1 flex-shrink-0" />
+            <div className="flex items-start gap-2">
+              <FileText className="w-4 h-4 text-blue-600 mt-1 flex-shrink-0" />
               <div>
-                <p className="text-lg text-gray-600 mb-2 font-semibold">Nischen</p>
-                <p className="text-xl text-gray-900 font-medium">Immo, Energie, Gesundheitswesen</p>
+                <p className="text-xs text-gray-600 mb-1 font-semibold">Nischen</p>
+                <p className="text-sm text-gray-900 font-medium">{markStehNischen || "Keine Nischen zugewiesen"}</p>
               </div>
             </div>
-            <div className="flex items-start gap-4">
-              <AlertCircle className="w-8 h-8 text-orange-600 mt-1 flex-shrink-0" />
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-orange-600 mt-1 flex-shrink-0" />
               <div>
-                <p className="text-lg text-gray-600 mb-2 font-semibold">Insolventes Unternehmen</p>
-                <p className="text-2xl text-gray-900 font-bold">TZ-West GmbH</p>
+                <p className="text-xs text-gray-600 mb-1 font-semibold">Insolventes Unternehmen</p>
+                <p className="text-base text-gray-900 font-bold">TZ-West GmbH</p>
               </div>
             </div>
           </CardContent>
@@ -1578,11 +1653,22 @@ export default function Verwaltung() {
       {/* Activity Log Card */}
       <Card className="mb-6 bg-gray-900 border-gray-700">
         <CardHeader className="pb-3 border-b border-gray-700">
-          <CardTitle className="text-lg flex items-center gap-2 text-gray-100">
-            <Activity className="w-5 h-5" />
-            Aktivitäts-Protokoll
-          </CardTitle>
+          <div className="flex items-center justify-between w-full">
+            <CardTitle className="text-lg flex items-center gap-2 text-gray-100">
+              <Activity className="w-5 h-5" />
+              Aktivitäts-Protokoll
+            </CardTitle>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setIsActivityLogCollapsed(!isActivityLogCollapsed)}
+              className="h-8 w-8 p-0"
+            >
+              {isActivityLogCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            </Button>
+          </div>
         </CardHeader>
+        {!isActivityLogCollapsed && (
         <CardContent className="p-0">
           <ScrollArea className="h-[400px]">
             {aktivitaeten.length === 0 ? (
@@ -1637,6 +1723,7 @@ export default function Verwaltung() {
             )}
           </ScrollArea>
         </CardContent>
+        )}
       </Card>
 
       <div className="flex items-center gap-2 max-w-md">
@@ -1815,6 +1902,7 @@ export default function Verwaltung() {
                                 onClick={() => {
                                   setViewCall(call);
                                   setIsCallViewerOpen(true);
+                                  markCallAsRead(interessent.id);
                                 }}
                               >
                                 {call.typ.replace("Mailbox", "MB")} {getCallTypeNumber(call, callVerlauf[interessent.id], index)}
@@ -1840,7 +1928,7 @@ export default function Verwaltung() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 px-2"
+                        className={`h-8 px-2 ${unreadItems[interessent.id]?.hasUnreadCall ? 'bg-cyan-500 hover:bg-cyan-600 text-white border-cyan-500' : ''}`}
                         onClick={() => {
                           setSelectedInteressent(interessent);
                           setIsCallDialogOpen(true);
@@ -1872,6 +1960,7 @@ export default function Verwaltung() {
                             onClick={() => {
                               setViewNotiz(notiz);
                               setIsNotizViewerOpen(true);
+                              markNotizAsRead(interessent.id);
                             }}
                           >
                             Notiz {index + 1}
@@ -1896,7 +1985,7 @@ export default function Verwaltung() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 px-2"
+                        className={`h-8 px-2 ${unreadItems[interessent.id]?.hasUnreadNotiz ? 'bg-cyan-500 hover:bg-cyan-600 text-white border-cyan-500' : ''}`}
                         onClick={() => {
                           setSelectedInteressent(interessent);
                           setIsNotizDialogOpen(true);
@@ -2375,8 +2464,36 @@ export default function Verwaltung() {
                       <Label className="text-sm font-medium text-muted-foreground">Call notwendig</Label>
                       <Select
                         value={editingCallNotwendig || selectedInteressent.call_notwendig}
-                        onValueChange={(value) => {
+                        onValueChange={async (value) => {
                           setEditingCallNotwendig(value);
+                          
+                          if (value === "Nicht erreicht") {
+                            const { data: user } = await supabase.auth.getUser();
+                            if (user.user) {
+                              await supabase.from("interessenten_calls").insert({
+                                interessent_id: selectedInteressent.id,
+                                user_id: user.user.id,
+                                typ: "MB Meldung",
+                                notiz: "Automatisch hinzugefügt durch 'Nicht erreicht' Status"
+                              });
+                              
+                              await logActivity(selectedInteressent.id, "call_notiz", "MB Meldung automatisch hinzugefügt (Nicht erreicht)");
+                              
+                              await supabase.from('interessenten_unread_items').upsert({
+                                interessent_id: selectedInteressent.id,
+                                user_id: user.user.id,
+                                has_unread_call: true,
+                                has_unread_notiz: unreadItems[selectedInteressent.id]?.hasUnreadNotiz || false
+                              }, { onConflict: 'interessent_id,user_id' });
+                              
+                              fetchInteressenten(user.user);
+                              loadAktivitaeten(user.user);
+                              loadUnreadItems(user.user.id);
+                              
+                              toast({ title: "MB Meldung hinzugefügt", description: "Automatisch durch 'Nicht erreicht' Status" });
+                            }
+                          }
+                          
                           if (value === "Call notwendig") {
                             setEditingCallGrund(selectedInteressent.call_notwendig_grund || "");
                           } else {
