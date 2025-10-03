@@ -25,6 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { fetchUserStatusSettings, updateStatusSettings, deleteStatus as deleteStatusFromDB, migrateAllUserStatusData, reorderStatuses, addNewStatus, type StatusSetting } from "@/lib/statusColors";
+import { LiveChat } from "@/components/LiveChat";
 
 const formSchema = z.object({
   unternehmensname: z.string().min(1, "Unternehmensname ist erforderlich"),
@@ -1602,67 +1603,75 @@ export default function Verwaltung() {
         </div>
       </div>
 
-      {/* Lawyer Profiles Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-        {/* Dr. Torsten Alexander Küpper Card */}
-        <Card className="bg-white border-gray-300 shadow-sm">
-          <CardHeader className="border-b border-gray-200 pb-2">
-            <CardTitle className="text-lg text-gray-900 font-black">Dr. Torsten Alexander Küpper</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-3 space-y-2">
-            <div className="flex items-start gap-2">
-              <Mail className="w-4 h-4 text-cyan-600 mt-1 flex-shrink-0" />
-              <div>
-                <p className="text-xs text-gray-600 mb-1 font-semibold">E-Mail</p>
-                <p className="text-sm text-gray-900 font-mono font-medium">t.kuepper@kbs-kanzlei.de</p>
+      {/* Lawyer Profiles & Live Chat Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Left Column: Both Lawyer Cards */}
+        <div className="space-y-3">
+          {/* Dr. Torsten Alexander Küpper Card */}
+          <Card className="bg-white border-gray-300 shadow-sm">
+            <CardHeader className="border-b border-gray-200 pb-2">
+              <CardTitle className="text-lg text-gray-900 font-black">Dr. Torsten Alexander Küpper</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-3 space-y-2">
+              <div className="flex items-start gap-2">
+                <Mail className="w-4 h-4 text-cyan-600 mt-1 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-gray-600 mb-1 font-semibold">E-Mail</p>
+                  <p className="text-sm text-gray-900 font-mono font-medium">t.kuepper@kbs-kanzlei.de</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <FileText className="w-4 h-4 text-blue-600 mt-1 flex-shrink-0" />
-              <div>
-                <p className="text-xs text-gray-600 mb-1 font-semibold">Nische</p>
-                <p className="text-sm text-gray-900 font-medium">Metall</p>
+              <div className="flex items-start gap-2">
+                <FileText className="w-4 h-4 text-blue-600 mt-1 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-gray-600 mb-1 font-semibold">Nische</p>
+                  <p className="text-sm text-gray-900 font-medium">Metall</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-orange-600 mt-1 flex-shrink-0" />
-              <div>
-                <p className="text-xs text-gray-600 mb-1 font-semibold">Insolventes Unternehmen</p>
-                <p className="text-base text-gray-900 font-bold">Marina Technik GmbH</p>
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-orange-600 mt-1 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-gray-600 mb-1 font-semibold">Insolventes Unternehmen</p>
+                  <p className="text-base text-gray-900 font-bold">Marina Technik GmbH</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Mark Steh Card */}
-        <Card className="bg-white border-gray-300 shadow-sm">
-          <CardHeader className="border-b border-gray-200 pb-2">
-            <CardTitle className="text-lg text-gray-900 font-black">Mark Steh</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-3 space-y-2">
-            <div className="flex items-start gap-2">
-              <Mail className="w-4 h-4 text-cyan-600 mt-1 flex-shrink-0" />
-              <div>
-                <p className="text-xs text-gray-600 mb-1 font-semibold">E-Mail</p>
-                <p className="text-sm text-gray-900 font-mono font-medium">m.steh@kbs-kanzlei.de</p>
+          {/* Mark Steh Card */}
+          <Card className="bg-white border-gray-300 shadow-sm">
+            <CardHeader className="border-b border-gray-200 pb-2">
+              <CardTitle className="text-lg text-gray-900 font-black">Mark Steh</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-3 space-y-2">
+              <div className="flex items-start gap-2">
+                <Mail className="w-4 h-4 text-cyan-600 mt-1 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-gray-600 mb-1 font-semibold">E-Mail</p>
+                  <p className="text-sm text-gray-900 font-mono font-medium">m.steh@kbs-kanzlei.de</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <FileText className="w-4 h-4 text-blue-600 mt-1 flex-shrink-0" />
-              <div>
-                <p className="text-xs text-gray-600 mb-1 font-semibold">Nischen</p>
-                <p className="text-sm text-gray-900 font-medium">{markStehNischen || "Keine Nischen zugewiesen"}</p>
+              <div className="flex items-start gap-2">
+                <FileText className="w-4 h-4 text-blue-600 mt-1 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-gray-600 mb-1 font-semibold">Nischen</p>
+                  <p className="text-sm text-gray-900 font-medium">{markStehNischen || "Keine Nischen zugewiesen"}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-orange-600 mt-1 flex-shrink-0" />
-              <div>
-                <p className="text-xs text-gray-600 mb-1 font-semibold">Insolventes Unternehmen</p>
-                <p className="text-base text-gray-900 font-bold">TZ-West GmbH</p>
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-orange-600 mt-1 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-gray-600 mb-1 font-semibold">Insolventes Unternehmen</p>
+                  <p className="text-base text-gray-900 font-bold">TZ-West GmbH</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column: Live Chat */}
+        <div>
+          <LiveChat />
+        </div>
       </div>
 
       {/* Activity Log Card */}

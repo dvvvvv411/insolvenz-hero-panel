@@ -236,6 +236,24 @@ export type Database = {
         }
         Relationships: []
       }
+      team_chat: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+        }
+        Relationships: []
+      }
       unread_items: {
         Row: {
           created_at: string | null
