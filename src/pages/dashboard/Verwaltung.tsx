@@ -2107,11 +2107,6 @@ export default function Verwaltung() {
                         ))}
                       </SelectContent>
                     </Select>
-                    {interessent.call_notwendig_grund && (
-                      <div className="absolute top-9 left-0 right-0 text-xs text-muted-foreground bg-background border rounded p-1 z-10">
-                        {interessent.call_notwendig_grund}
-                      </div>
-                    )}
                   </div>
                 </TableCell>
                 <TableCell className="px-2 py-2">
