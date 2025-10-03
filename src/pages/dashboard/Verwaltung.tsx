@@ -1701,6 +1701,7 @@ export default function Verwaltung() {
                   const userColor = getUserColor(aktivitaet.user_email);
                   
                   const isCallNotiz = aktivitaet.beschreibung.includes("Call-Notiz hinzugefügt");
+                  const isNormalNotiz = aktivitaet.beschreibung.includes("Notiz hinzugefügt") && !isCallNotiz;
                   
                   return (
                     <div 
@@ -1708,7 +1709,9 @@ export default function Verwaltung() {
                       className={`grid grid-cols-[150px_100px_40px_200px_1fr_auto] gap-3 items-center px-4 py-4 font-mono text-base border-b hover:bg-gray-800/50 transition-colors ${
                         isCallNotiz 
                           ? 'bg-cyan-900/30 border-cyan-700' 
-                          : `border-gray-800 ${index % 2 === 0 ? 'bg-gray-900' : 'bg-gray-850'}`
+                          : isNormalNotiz
+                            ? 'bg-purple-900/30 border-purple-700'
+                            : `border-gray-800 ${index % 2 === 0 ? 'bg-gray-900' : 'bg-gray-850'}`
                       }`}
                     >
                       <span className="text-gray-400 text-sm">{timestamp}</span>
