@@ -1688,7 +1688,7 @@ export default function Verwaltung() {
             <Button 
               variant="outline" 
               size="sm"
-              className="h-8 w-8 p-0 border-gray-600 hover:bg-gray-700 hover:border-gray-500"
+              className="h-8 w-8 p-0 bg-gray-700 border-gray-500 hover:bg-transparent hover:border-gray-600"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsActivityLogCollapsed(!isActivityLogCollapsed);
