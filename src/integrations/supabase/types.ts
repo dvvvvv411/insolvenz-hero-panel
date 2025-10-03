@@ -194,44 +194,6 @@ export type Database = {
           },
         ]
       }
-      interessenten_unread_items: {
-        Row: {
-          created_at: string | null
-          has_unread_call: boolean | null
-          has_unread_notiz: boolean | null
-          id: string
-          interessent_id: string
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          has_unread_call?: boolean | null
-          has_unread_notiz?: boolean | null
-          id?: string
-          interessent_id: string
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          has_unread_call?: boolean | null
-          has_unread_notiz?: boolean | null
-          id?: string
-          interessent_id?: string
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "interessenten_unread_items_interessent_id_fkey"
-            columns: ["interessent_id"]
-            isOneToOne: false
-            referencedRelation: "interessenten"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       nischen: {
         Row: {
           bestandsliste_path: string | null
@@ -270,6 +232,33 @@ export type Database = {
           pkw_dropbox_url?: string | null
           transporter_dropbox_url?: string | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      unread_items: {
+        Row: {
+          created_at: string | null
+          id: string
+          interessent_id: string
+          item_id: string
+          item_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          interessent_id: string
+          item_id: string
+          item_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          interessent_id?: string
+          item_id?: string
+          item_type?: string
           user_id?: string
         }
         Relationships: []
