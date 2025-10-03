@@ -1704,7 +1704,7 @@ export default function Verwaltung() {
                   return (
                     <div 
                       key={aktivitaet.id} 
-                      className={`grid grid-cols-[150px_200px_40px_200px_1fr] gap-3 items-start px-4 py-4 font-mono text-base border-b hover:bg-gray-800/50 transition-colors min-w-0 ${
+                      className={`grid grid-cols-[150px_200px_40px_200px_minmax(0,1fr)] gap-3 items-start px-4 py-4 w-full font-mono text-base border-b hover:bg-gray-800/50 transition-colors ${
                         isCallNotiz 
                           ? 'bg-cyan-900/30 border-cyan-700' 
                           : isNormalNotiz
