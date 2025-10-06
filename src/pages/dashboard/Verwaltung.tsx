@@ -15,7 +15,7 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Phone, PhoneOff, PhoneMissed, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings, X, Edit, Search, Activity, MessageSquare, PhoneCall, AlertCircle, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Phone, PhoneOff, PhoneMissed, Mail, FileText, Eye, Trash2, Info, ExternalLink, Download, Copy, GripVertical, Settings, X, Edit, Search, Activity, MessageSquare, PhoneCall, AlertCircle, RefreshCw, ChevronDown, ChevronUp, InfoIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -209,6 +209,7 @@ export default function Verwaltung() {
   const [isActivityLogCollapsed, setIsActivityLogCollapsed] = useState(false);
   const [unreadNotizIds, setUnreadNotizIds] = useState<Set<string>>(new Set());
   const [unreadCallIds, setUnreadCallIds] = useState<Set<string>>(new Set());
+  const [isInsolvenzInfoOpen, setIsInsolvenzInfoOpen] = useState(false);
   const { toast } = useToast();
 
   // Dynamic niches for Mark Steh (all except "Metall")
@@ -1754,6 +1755,178 @@ export default function Verwaltung() {
         </CardContent>
         )}
       </Card>
+
+      {/* Insolvenz-Panel Info Button */}
+      <Card className="bg-gradient-to-r from-orange-500 via-yellow-500 to-orange-500 border-2 border-yellow-400 shadow-2xl animate-pulse hover:animate-none transition-all">
+        <CardContent className="p-4">
+          <Button
+            onClick={() => setIsInsolvenzInfoOpen(true)}
+            className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-bold text-lg py-6 shadow-lg border-2 border-white/50 hover:border-white transition-all"
+            size="lg"
+          >
+            <InfoIcon className="w-6 h-6 mr-2 animate-bounce" />
+            📋 WICHTIG: Neues Insolvenz-Panel - Hier klicken für Informationen!
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Insolvenz Info Dialog */}
+      <Dialog open={isInsolvenzInfoOpen} onOpenChange={setIsInsolvenzInfoOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-orange-600 flex items-center gap-2">
+              <InfoIcon className="w-8 h-8" />
+              📋 Neues Insolvenz-Panel - Wichtige Informationen
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6 text-sm">
+            {/* Email Kampagne */}
+            <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg border-l-4 border-blue-500">
+              <h3 className="font-bold text-lg mb-2 text-blue-700 dark:text-blue-300">📧 Neue Email-Kampagne</h3>
+              <p className="mb-2">Die Vics bekommen jetzt folgende Mail gespammt:</p>
+              <a 
+                href="https://prnt.sc/_yRzejpBwlpq" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+              >
+                Screenshot ansehen <ExternalLink className="w-4 h-4" />
+              </a>
+              <p className="mt-2 text-gray-700 dark:text-gray-300">
+                Die Email wurde umgeschrieben, damit sie weniger formell wirkt und die Vics nicht mehr verwirrt sind.
+              </p>
+            </div>
+
+            {/* Neue Insolvenz-Seite */}
+            <div className="bg-green-50 dark:bg-green-950 p-4 rounded-lg border-l-4 border-green-500">
+              <h3 className="font-bold text-lg mb-2 text-green-700 dark:text-green-300">🌐 Neue Insolvenz-Seite</h3>
+              <p className="mb-2">
+                Ich habe eine Seite gemacht, welche die Bestandsliste ablösen soll & worüber die Vics direkt Anfragen tätigen können.
+              </p>
+              <a 
+                href="https://prnt.sc/NFuwv7cYqlE6" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-green-600 hover:text-green-800 underline flex items-center gap-1 mb-3"
+              >
+                Screenshot ansehen <ExternalLink className="w-4 h-4" />
+              </a>
+              
+              <div className="bg-white dark:bg-gray-900 p-3 rounded border border-green-300 dark:border-green-700">
+                <p className="font-semibold mb-1">🔗 Live Demo:</p>
+                <a 
+                  href="https://insolvenz.kbs-kanzlei.de/insolvenz/tz_west_gmbh" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 underline break-all"
+                >
+                  https://insolvenz.kbs-kanzlei.de/insolvenz/tz_west_gmbh
+                </a>
+                <p className="mt-2">
+                  <span className="font-semibold">🔑 Passwort:</span> 
+                  <code className="bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded ml-2 font-mono">YHPW71XQ</code>
+                </p>
+              </div>
+            </div>
+
+            {/* Wichtige Features */}
+            <div className="bg-purple-50 dark:bg-purple-950 p-4 rounded-lg border-l-4 border-purple-500">
+              <h3 className="font-bold text-lg mb-2 text-purple-700 dark:text-purple-300">✨ Wichtige Features</h3>
+              <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300">
+                <li><strong>Individuelles Passwort:</strong> Jeder Vic bekommt sein eigenes Passwort</li>
+                <li><strong>Reservierung:</strong> Wir können individuell pro Vic Fahrzeuge auf "reserviert" stellen (z.B. nach Rechnung/Kaufvertrag)</li>
+                <li><strong>KBS Logo:</strong> Alle Produktbilder haben unser KBS Kanzlei Logo unten rechts</li>
+                <li><strong>DEKRA Berichte:</strong> Direkt für Interessenten verfügbar, ohne dass sie vorher anrufen müssen</li>
+                <li><strong>Gerichtsbeschluss:</strong> Kein Email-Versand mehr - sieht man direkt auf der Seite</li>
+              </ul>
+            </div>
+
+            {/* Admin Panel */}
+            <div className="bg-red-50 dark:bg-red-950 p-4 rounded-lg border-l-4 border-red-500">
+              <h3 className="font-bold text-lg mb-2 text-red-700 dark:text-red-300">🔐 Admin Panel Zugang</h3>
+              <p className="mb-2">Anfragen bekommst du im Panel unter:</p>
+              <a 
+                href="https://insolvenz.kbs-kanzlei.de/admin" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1 mb-3"
+              >
+                https://insolvenz.kbs-kanzlei.de/admin <ExternalLink className="w-4 h-4" />
+              </a>
+              
+              <div className="bg-white dark:bg-gray-900 p-3 rounded border border-red-300 dark:border-red-700">
+                <p className="font-semibold mb-1">Deine Zugangsdaten:</p>
+                <p><span className="font-semibold">📧 Email:</span> <code className="bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded ml-2 font-mono">x959@caller.de</code></p>
+                <p className="mt-1"><span className="font-semibold">🔑 Passwort:</span> <code className="bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded ml-2 font-mono">Abc581</code></p>
+              </div>
+            </div>
+
+            {/* Workflow */}
+            <div className="bg-yellow-50 dark:bg-yellow-950 p-4 rounded-lg border-l-4 border-yellow-500">
+              <h3 className="font-bold text-lg mb-2 text-yellow-700 dark:text-yellow-300">⚙️ Workflow - WICHTIG!</h3>
+              <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300">
+                <li>
+                  <strong>Inbound-Anrufe:</strong> Wenn Vics inbound anrufen, haben sie schon alle Infos über die Fahrzeuge über die Plattform
+                  → <span className="bg-yellow-200 dark:bg-yellow-800 px-2 py-1 rounded">Den Vics IMMER sagen, sie sollen auf der Plattform eine Anfrage tätigen!</span>
+                </li>
+                <li>
+                  <strong>Anfragen:</strong> Die Anfragen die ins Panel kommen musst du anrufen, den Ablauf erklären & wir senden jedem Vic dann Rechnung + Kaufvertrag (beides!)
+                </li>
+                <li>
+                  <strong>Notizen:</strong> Notizen schreibst du ins neue Panel bei den Anfragen hin
+                </li>
+                <li>
+                  <strong>Call Anweisung:</strong> Wenn du eine Call Anweisung hast und der Vic nicht ran geht:
+                  → Markiere den Anruf NICHT als fertig, lass ihn türkis und probier es später nochmal
+                  → Im alten Panel: Verwende "Nicht erreicht" im Dropdown
+                </li>
+              </ul>
+            </div>
+
+            {/* Altes vs Neues Panel */}
+            <div className="bg-orange-50 dark:bg-orange-950 p-4 rounded-lg border-l-4 border-orange-500">
+              <h3 className="font-bold text-lg mb-2 text-orange-700 dark:text-orange-300">🔄 Altes vs. Neues Panel</h3>
+              <div className="space-y-2 text-gray-700 dark:text-gray-300">
+                <p>
+                  <strong>⚠️ Altes Panel (inso.paymentwallsecure.com):</strong> 
+                  Vorerst WEITER verwenden für Vics aus der letzten Woche
+                </p>
+                <p className="ml-4">
+                  → Habe einige Mails erhalten, also noch einige Interessenten dabei<br/>
+                  → Musst unterscheiden können ob jmd neu ist oder ein bestehender Interessent<br/>
+                  → Alte Interessenten kriegen auch weiterhin Rechnung/Kaufvertrag
+                </p>
+                <p className="mt-3">
+                  <strong>✅ Neues Panel:</strong> Nur bei den NEUEN Vics verwenden
+                </p>
+              </div>
+            </div>
+
+            {/* Bug Hinweis */}
+            <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg border-l-4 border-gray-500">
+              <h3 className="font-bold text-lg mb-2 text-gray-700 dark:text-gray-300">🐛 Bekannter Bug</h3>
+              <p className="text-gray-700 dark:text-gray-300">
+                Gerade ist vielleicht ein kleiner Bug drin beim Zugreifen auf die Insolvenz-Seite, 
+                dass man das Zugangspasswort 2x eingeben muss. Wird morgen gefixt.
+              </p>
+            </div>
+
+            {/* Action Button */}
+            <div className="bg-gradient-to-r from-green-500 to-blue-500 p-4 rounded-lg text-white text-center">
+              <p className="font-bold text-lg mb-2">👉 Bitte unbedingt selber die Seite abchecken und eine Anfrage tätigen!</p>
+              <a 
+                href="https://insolvenz.kbs-kanzlei.de/insolvenz/tz_west_gmbh" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-block bg-white text-blue-600 font-bold px-6 py-3 rounded-lg hover:bg-gray-100 transition-all shadow-lg mt-2"
+              >
+                Jetzt Live-Seite testen →
+              </a>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex items-center gap-2 max-w-md">
         <div className="relative flex-1">
