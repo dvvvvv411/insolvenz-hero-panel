@@ -1757,7 +1757,14 @@ export default function Verwaltung() {
       </Card>
 
       {/* Insolvenz-Panel Info Button */}
-      <Card className="bg-gradient-to-r from-orange-500 via-yellow-500 to-orange-500 border-2 border-yellow-400 shadow-2xl animate-pulse hover:animate-none transition-all">
+      <Card 
+        className="border-2 border-yellow-400 shadow-lg relative overflow-hidden"
+        style={{
+          background: 'linear-gradient(90deg, #fb923c, #fbbf24, #f59e0b, #fb923c)',
+          backgroundSize: '200% 100%',
+          animation: 'rainbow-slide 3s linear infinite',
+        }}
+      >
         <CardContent className="p-4">
           <Button
             onClick={() => setIsInsolvenzInfoOpen(true)}
